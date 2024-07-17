@@ -136,7 +136,9 @@ class MockReads(TextIOWrapper):
         self.queue = new
         return old
 
-    def pop_queue(self, size: int = -1) -> str:
+    def pop_queue(self, size: int = -1) -> Optional[str]:
+        if len(self.queue) <= self.POP_AT:
+            return None
         if size < 0:
             return self.queue.pop(self.POP_AT)
         else:
@@ -147,20 +149,20 @@ class MockReads(TextIOWrapper):
             return s
 
     def read(self, size: int = -1) -> str:
-        try:
-            return self.pop_queue(size)
-        except IndexError:
+        from_queue = self.pop_queue(size)
+        if from_queue is None:
             return self.inner.read(size)
+        return from_queue
 
     def readline(self, size: int = -1) -> str:
-        try:
-            s = self.queue[self.POP_AT]
-            lines = s.splitlines(True)
-            line = lines[0]
-            new_size = min(size, len(line))
-            return self.pop_queue(new_size)
-        except IndexError:
+        if len(self.queue) <= self.POP_AT:
             return self.inner.readline(size)
+
+        s = self.queue[self.POP_AT]
+        lines = s.splitlines(True)
+        line = lines[0]
+        new_size = min(size, len(line))
+        return self.pop_queue(new_size)
 
 log: Log = Log()
 stdin: Optional[IOTracer] = None
