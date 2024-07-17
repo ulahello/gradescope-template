@@ -138,7 +138,7 @@ class MockReads(TextIO):
             return self.queue.pop(self.POP_AT)
         else:
             s = self.queue[self.POP_AT][:size]
-            self.queue[self.POP_AT] = s
+            self.queue[self.POP_AT] = self.queue[self.POP_AT][size:]
             if len(self.queue[self.POP_AT]) == 0:
                 self.queue.pop(self.POP_AT)
             return s
