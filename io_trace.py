@@ -210,7 +210,7 @@ def normalize_log(ls: Iterable[Read | Write]) -> List[Read | Write]:
                 acc.val += op.val
             else:
                 out.append(acc)
-                acc = None
+                acc = op
 
     if acc is not None:
         out.append(acc)
