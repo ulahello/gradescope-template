@@ -101,20 +101,23 @@ class Log:
 class IOTracer(TextIOWrapper):
     inner: TextIO
 
-    def __init__(self, io: TextIO, log: Log) -> None:
+    def __init__(self, io: TextIO):
         self.inner = io
 
     def read(self, size: int = -1) -> str:
+        global log
         ret = self.inner.read(size)
         log.log(Read(ret))
         return ret
 
     def readline(self, size: int = -1) -> str:
+        global log
         ret = self.inner.readline(size)
         log.log(Read(ret))
         return ret
 
     def write(self, s: str) -> int:
+        global log
         ret = self.inner.write(s)
         log.log(Write(s))
         return ret
