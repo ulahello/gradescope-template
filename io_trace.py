@@ -176,9 +176,9 @@ stdout: Optional[IOTracer] = None
 stderr: Optional[IOTracer] = None
 
 def init() -> None:
-    global log, stdin, stdout, stderr
-    stdin = IOTracer(MockReads(sys.stdin, []), log) # type: ignore
-    stdout = IOTracer(sys.stdout, log) # type: ignore
+    global stdin, stdout, stderr
+    stdin = IOTracer(MockReads(sys.stdin, [])) # type: ignore
+    stdout = IOTracer(sys.stdout) # type: ignore
 
     sys.stdin = stdin
     sys.stdout = stdout
