@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 mkdir -p results
-python3 source/main.py
+python3 source/autograder_script.py
