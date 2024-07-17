@@ -122,6 +122,9 @@ class IOTracer(TextIOWrapper):
         log.log(Write(s))
         return ret
 
+    def __repr__(self) -> str:
+        return f"IOTracer({repr(self.inner)})"
+
 class MockReads(TextIOWrapper):
     POP_AT: int = 0
     inner: TextIO
@@ -163,6 +166,9 @@ class MockReads(TextIOWrapper):
         line = lines[0]
         new_size = min(size, len(line))
         return self.pop_queue(new_size)
+
+    def __repr__(self) -> str:
+        return f"MockReads({repr(self.inner)})"
 
 log: Log = Log()
 stdin: Optional[IOTracer] = None
