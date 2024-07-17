@@ -98,7 +98,7 @@ class Log:
     def __repr__(self) -> str:
         return f"Log({repr(self.ls)})"
 
-class IOTracer(TextIO):
+class IOTracer(TextIOWrapper):
     inner: TextIO
 
     def __init__(self, io: TextIO, log: Log) -> None:
@@ -119,7 +119,7 @@ class IOTracer(TextIO):
         log.log(Write(s))
         return ret
 
-class MockReads(TextIO):
+class MockReads(TextIOWrapper):
     POP_AT: int = 0
     inner: TextIO
     queue: List[str]
