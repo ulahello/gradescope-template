@@ -6,6 +6,7 @@ import json
 import traceback
 
 # TODO: students may use print debugging. make sure that is useful and provides feedback??
+# TODO: the quantity of input to a console interaction may be uncouth to represent as a case title, and instead the entire interaction should be displayed to the student (instead of just "all lines match" or something)
 
 WHERE_THE_RESULTS_GO: str = "results/results.json"
 OUTPUT_FORMAT: str = "md"
