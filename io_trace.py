@@ -1,8 +1,6 @@
-from io import TextIOWrapper
-from typing import List, Tuple, Optional, Iterator, Iterable, Any, Callable, AnyStr, IO, TextIO, BinaryIO
+from io import TextIOWrapper, IOBase, TextIOBase, SEEK_SET
+from typing import List, Tuple, Optional, Iterator, Iterable, Any, Callable, AnyStr, IO, TextIO, BinaryIO, cast
 import sys
-
-# TODO: doublecheck that the wrappers are solid
 
 class Read:
     val: str
@@ -98,23 +96,66 @@ class Log:
     def __repr__(self) -> str:
         return f"Log({repr(self.ls)})"
 
-class IOTracer(TextIOWrapper):
+class IOTracer(TextIOBase):
     inner: TextIO
 
     def __init__(self, io: TextIO):
         self.inner = io
 
-    def read(self, size: int = -1) -> str:
+    def close(self) -> None:
+        return self.inner.close()
+
+    def fileno(self) -> int:
+        return self.inner.fileno()
+
+    def flush(self) -> None:
+        return self.inner.flush()
+
+    def isatty(self) -> bool:
+        return self.inner.isatty()
+
+    def readable(self) -> bool:
+        return self.inner.readable()
+
+    def read(self, size: Optional[int] = -1) -> str:
+        if size is None:
+            size = -1
         global log
         ret = self.inner.read(size)
         log.log(Read(ret))
         return ret
 
-    def readline(self, size: int = -1) -> str:
+    def readline(self, size: Optional[int] = -1) -> str: # type: ignore[override]
+        if size is None:
+            size = -1
         global log
         ret = self.inner.readline(size)
         log.log(Read(ret))
         return ret
+
+    def readlines(self, hint: Optional[int] = -1) -> List[str]: # type: ignore[override]
+        if hint is None:
+            hint = -1
+        global log
+        ret = self.inner.readlines(hint)
+        for read_val in ret:
+            log.log(Read(read_val))
+        return ret
+
+    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
+        return self.inner.seek(whence)
+
+    def seekable(self) -> bool:
+        return self.inner.seekable()
+
+    def tell(self) -> int:
+        return self.inner.tell()
+
+    def truncate(self, size: Optional[int] = None) -> int:
+        return self.inner.truncate(size)
+
+    def writable(self) -> bool:
+        return self.inner.writable()
 
     def write(self, s: str) -> int:
         global log
@@ -122,10 +163,16 @@ class IOTracer(TextIOWrapper):
         log.log(Write(s))
         return ret
 
+    def writelines(self, lines: Iterable[str]) -> None: # type: ignore[override]
+        global log
+        self.inner.writelines(lines)
+        for line in lines:
+            log.log(Write(line))
+
     def __repr__(self) -> str:
         return f"IOTracer({repr(self.inner)})"
 
-class MockReads(TextIOWrapper):
+class MockReads(TextIOBase):
     POP_AT: int = 0
     inner: TextIO
     queue: List[str]
@@ -151,13 +198,30 @@ class MockReads(TextIOWrapper):
                 self.queue.pop(self.POP_AT)
             return s
 
-    def read(self, size: int = -1) -> str:
+    def close(self) -> None:
+        return self.inner.close()
+
+    def fileno(self) -> int:
+        return self.inner.fileno()
+
+    def flush(self) -> None:
+        return self.inner.flush()
+
+    def isatty(self) -> bool:
+        return self.inner.isatty()
+
+    def readable(self) -> bool:
+        return self.inner.readable()
+
+    def read(self, size: Optional[int] = -1) -> str:
+        if size is None:
+            size = -1
         from_queue = self.pop_queue(size)
         if from_queue is None:
             return self.inner.read(size)
         return from_queue
 
-    def readline(self, size: int = -1) -> str:
+    def readline(self, size: int = -1) -> str: # type: ignore[override]
         if len(self.queue) <= self.POP_AT:
             return self.inner.readline(size)
 
@@ -169,6 +233,27 @@ class MockReads(TextIOWrapper):
         assert ret is not None, "unreachable"
         return ret
 
+    def seek(self, offset: int, whence: int = SEEK_SET) -> int:
+        return self.inner.seek(whence)
+
+    def seekable(self) -> bool:
+        return self.inner.seekable()
+
+    def tell(self) -> int:
+        return self.inner.tell()
+
+    def truncate(self, size: Optional[int] = None) -> int:
+        return self.inner.truncate(size)
+
+    def writable(self) -> bool:
+        return self.inner.writable()
+
+    def write(self, s: str) -> int:
+        return self.inner.write(s)
+
+    def writelines(self, lines: Iterable[str]) -> None: # type: ignore[override]
+        return self.inner.writelines(lines)
+
     def __repr__(self) -> str:
         return f"MockReads({repr(self.inner)})"
 
@@ -179,15 +264,15 @@ stderr: Optional[IOTracer] = None
 
 def init() -> None:
     global stdin, stdout, stderr
-    stdin = IOTracer(MockReads(sys.stdin, [])) # type: ignore
-    stdout = IOTracer(sys.stdout) # type: ignore
+    stdin = IOTracer(cast(TextIO, MockReads(sys.stdin, [])))
+    stdout = IOTracer(sys.stdout)
 
-    sys.stdin = stdin
-    sys.stdout = stdout
+    sys.stdin = stdin # type: ignore[assignment]
+    sys.stdout = stdout # type: ignore[assignment]
 
 def deinit() -> None:
-    sys.stdin = sys.stdin.inner.inner # type: ignore
-    sys.stdout = sys.stdout.inner # type: ignore
+    sys.stdin = sys.stdin.inner.inner # type: ignore[attr-defined]
+    sys.stdout = sys.stdout.inner # type: ignore[attr-defined]
 
     global stdin, stdout, stderr
     stdin = None
@@ -201,7 +286,7 @@ def capture(func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, Lis
     # clear console i/o log
     log.swap()
     # freshly provide queue of stdin reads
-    stdin.inner.swap_queue(io_queue) # type: ignore
+    stdin.inner.swap_queue(io_queue) # type: ignore[attr-defined]
 
     ret: Any = func() # @raise
 
