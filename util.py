@@ -78,3 +78,14 @@ def cmp_ret_epsilon(expect: Any, actual: Any,
 def cmp_ret_equ(expect: Any, actual: Any) -> bool:
     eq: bool = expect == actual
     return eq
+
+def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any], Sequence[Any]], bool]:
+    def inner(expect: Sequence[Any], actual: Sequence[Any]) -> bool:
+        if len(expect) != len(actual):
+            return False
+        for expect_elem, actual_elem in zip(expect, actual):
+            if not cmp_elem(expect_elem, actual_elem):
+                return False
+        return True
+
+    return inner
