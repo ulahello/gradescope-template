@@ -165,7 +165,9 @@ class MockReads(TextIOWrapper):
         lines = s.splitlines(True)
         line = lines[0]
         new_size = min(size, len(line))
-        return self.pop_queue(new_size)
+        ret = self.pop_queue(new_size)
+        assert ret is not None, "unreachable"
+        return ret
 
     def __repr__(self) -> str:
         return f"MockReads({repr(self.inner)})"
