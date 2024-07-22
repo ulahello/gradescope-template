@@ -128,3 +128,21 @@ class CaseCheckRecursive(Case):
             output += "Did not find recursion!\n"
         return output
 
+def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
+    src: str = inspect.getsource(func)
+    try:
+        tree: ast.AST = ast.parse(src)
+    except IndentationError:
+        return (False, False)
+
+    uses_lambda: bool = False
+    uses_def: bool = False
+
+    if isinstance(tree, ast.Module):
+        if len(tree.body) >= 1:
+            node = tree.body[0]
+            uses_def = isinstance(node, ast.FunctionDef)
+            if isinstance(node, ast.Assign):
+                uses_lambda = isinstance(node.value, ast.Lambda)
+
+    return (uses_lambda, uses_def)
