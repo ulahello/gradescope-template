@@ -4,6 +4,7 @@ import recursion
 
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set
 import ast
+import inspect
 import io_trace as io
 
 class CaseFunc(Case):
