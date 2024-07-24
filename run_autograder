@@ -2,4 +2,8 @@
 
 mkdir -p results
 SCRIPT=`find 'source' -name 'script_*.py' -type f | head -n 1`
+if [ "${SCRIPT}" = "" ]; then
+	echo "${0}: Can't find an entry point! Does 'script_*.py' exist?"
+	exit 1
+fi
 python3 "${SCRIPT}"
