@@ -4,7 +4,7 @@ This README is under construction!
 
 ## How do I test my autograding script?
 
-This repository is laid out so that you can run [`autograder_script.py`](./autograder_script.py) and it should work as expected.
+This repository is laid out so that you can run [`script_*.py`](./script_unit_section_exercise.py) and it should work as expected.
 It will look for submission files in [`submission/`](./submission/).
 Once you've run it, take a look at [`results/results.json`](./results/results.json) for your output, as Gradescope will see it.
 
