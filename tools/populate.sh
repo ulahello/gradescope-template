@@ -33,6 +33,6 @@ popd
 cp -r --update=none "${TEMPLATE}/"* "${DST}"
 # the script was probably renamed according to the naming convention,
 # so we want to delete the version from the template.
-if [ "`find "${DST}" -path "script_*.py" -type f | wc -l`" -gt 1 ]; then
+if [ "`find "${DST}" -name "script_*.py" -type f | wc -l`" -gt 1 ]; then
 	rm -v "${DST}/script_unit_section_exercise.py"
 fi
