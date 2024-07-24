@@ -254,9 +254,12 @@ def run_test_cases(cases: List[Case]) -> List[Dict]:
         except AutograderError as e:
             passed = False
             output_f: StringIO = StringIO("")
-            print("```", file=output_f)
-            traceback.print_exception(e, file=output_f) # @fragile: signature changed slightly in 3.10
-            print("```", file=output_f)
+            if e.inner is None:
+                print(e.msg, file=output_f)
+            else:
+                print("```", file=output_f)
+                traceback.print_exception(e, file=output_f) # @fragile: signature changed slightly in 3.10
+                print("```", file=output_f)
             output = output_f.getvalue()
 
         status = "passed" if passed else "failed"
