@@ -56,7 +56,7 @@ def collect_defs_shallow(parent_def: Func | str, func_body: Iterable[ast.AST]) -
                     loc = f"'{func.parent_def}'"
                 else:
                     assert False, "unreachable"
-                raise AutograderError(None, f"Function '{func.name}', defined in {loc}, has conflicting implementations. Please check that it is defined at most once.")
+                raise AutograderError(None, f"Function '{func.name}', defined in {loc}, has conflicting implementations. Please ensure that it is defined at most once.")
             funcs.add(func)
     return funcs
 
