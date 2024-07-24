@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
 
 mkdir -p results
-python3 source/autograder_script.py
+SCRIPT=`find 'source' -name 'script_*.py' -type f | head -n 1`
+python3 "${SCRIPT}"
