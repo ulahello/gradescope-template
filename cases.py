@@ -45,6 +45,10 @@ class CaseAdHoc(Case):
         )
         return io_log
 
+    def expect(self, expect: bool) -> bool:
+        self.passed = self.passed and expect
+        return expect
+
     def expect_eq(self, expect: Any, actual: Any, msg_prefix: str, cmp: Callable[[Any, Any], bool] = cmp_ret_equ) -> bool:
         assert len(msg_prefix.splitlines()) == 1
 
