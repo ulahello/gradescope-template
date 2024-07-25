@@ -29,13 +29,21 @@ class CaseAdHoc(Case):
         (self.runner)(self)
         self.run_post()
 
-    def run_func(self, func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, List[Read | Write]]:
+    def run_func(self, func: Callable[[], Any], io_queue: List[str] = [], msg: str = "An exception was raised while running a student function.") -> Tuple[Any, List[Read | Write]]:
         try:
             ret, io_log = io_trace.capture(func, io_queue=io_queue)
         except Exception as e:
-            raise AutograderError(e, "An exception was raised while running a student function.")
+            raise AutograderError(e, msg)
 
         return ret, io_log
+
+    def run_script(self, script: str, io_queue: List[str] = []) -> List[Read | Write]:
+        _, io_log = self.run_func(
+            lambda: run_script(script),
+            io_queue=io_queue,
+            msg="An exception was raised while running a student script.",
+        )
+        return io_log
 
     def expect_eq(self, expect: Any, actual: Any, msg_prefix: str, cmp: Callable[[Any, Any], bool] = cmp_ret_equ) -> bool:
         assert len(msg_prefix.splitlines()) == 1
