@@ -116,6 +116,9 @@ class CaseAdHoc(Case):
         )
         return io_log
 
+    def check_passed(self) -> None:
+        pass
+
     def expect(self, expect: bool) -> bool:
         self.passed = self.passed and expect
         return expect
