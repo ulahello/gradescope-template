@@ -118,7 +118,14 @@ class Case:
                 output += f"Console line {line}: want additional line(s)\n"
                 return output
 
-            for oe, oa in zip(le, la):
+            for oe, oa in itertools.zip(le, la):
+                if oe is None:
+                    output += f"Console line {line}: expected end of line, but found {oa.word()} of `{repr(oa.val)}`.\n"
+                    return output
+                elif oa is None:
+                    output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found end of line.\n"
+                    return output
+
                 if type(oe) != type(oa):
                     # mismatched read/write
                     output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found {oa.word()} of `{repr(oa.val)}`.\n"
