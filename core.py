@@ -1,6 +1,8 @@
+from io_trace import Read, Write, LineIter
+import io_trace
+
 from io import StringIO
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
-import io_trace as io
 import itertools
 import json
 import traceback
@@ -35,10 +37,10 @@ class Case:
     io_queue: List[str]
 
     # Expected sequence of console I/O operations to observe during a test.
-    io_expect: List[io.Read | io.Write]
+    io_expect: List[Read | Write]
 
     # Observed sequence of console I/O operations during a test.
-    io_actual: Optional[List[io.Read | io.Write]]
+    io_actual: Optional[List[Read | Write]]
 
     # `True` if the `run` method has been called and completed exactly once.
     has_run: bool
@@ -54,14 +56,14 @@ class Case:
                  name: str,
                  warning: bool,
                  io_queue: List[str],
-                 io_expect: List[io.Read | io.Write]):
+                 io_expect: List[Read | Write]):
         self.visible = visible
         self.name = name
         self.warning = warning
         self.io_queue = io_queue
         # in case we're passed consecutive operations of the same
         # type, this will merge them (it's a pitfall otherwise)
-        self.io_expect = io.normalize_log(io_expect)
+        self.io_expect = io_trace.normalize_log(io_expect)
 
         self.io_actual = None
 
@@ -106,7 +108,7 @@ class Case:
             output += "All console I/O lines match.\n"
 
         line: int = 0
-        for le, la in itertools.zip_longest(io.LineIter(self.io_expect), io.LineIter(self.io_actual)):
+        for le, la in itertools.zip_longest(LineIter(self.io_expect), LineIter(self.io_actual)):
             line += 1
 
             if le is None:

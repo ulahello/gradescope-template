@@ -1,11 +1,12 @@
 from core import Case, AutograderError
+from io_trace import Read, Write
 from util import *
+import io_trace
 import recursion
 
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set
 import ast
 import inspect
-import io_trace as io
 
 class CaseAdHoc(Case):
     runner: Callable[["CaseAdHoc"], None]
@@ -28,9 +29,9 @@ class CaseAdHoc(Case):
         (self.runner)(self)
         self.run_post()
 
-    def run_func(self, func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, List[io.Read | io.Write]]:
+    def run_func(self, func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, List[Read | Write]]:
         try:
-            ret, io_log = io.capture(func, io_queue=io_queue)
+            ret, io_log = io_trace.capture(func, io_queue=io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student function.")
 
@@ -49,7 +50,7 @@ class CaseAdHoc(Case):
         self.passed = self.passed and eq
         return eq
 
-    def expect_io(self, expect: List[io.Read | io.Write], actual: List[io.Read | io.Write]) -> bool:
+    def expect_io(self, expect: List[Read | Write], actual: List[Read | Write]) -> bool:
         self.has_run = True
         self.io_expect = expect
         self.io_actual = actual
@@ -89,7 +90,7 @@ class CaseFunc(Case):
                  ret_expect: Any = None,
                  cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                  io_queue: List[str] = [],
-                 io_expect: List[io.Read | io.Write] = []):
+                 io_expect: List[Read | Write] = []):
         super().__init__(visible, name=name, warning=warning, io_queue=io_queue, io_expect=io_expect)
         self.func = func
         self.args = args
@@ -100,7 +101,7 @@ class CaseFunc(Case):
 
     def run(self) -> None:
         try:
-            self.ret_actual, self.io_actual = io.capture(lambda: self.func(*self.args), self.io_queue)
+            self.ret_actual, self.io_actual = io_trace.capture(lambda: self.func(*self.args), self.io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student function.")
 
@@ -131,13 +132,13 @@ class CaseScript(Case):
                  name: str,
                  warning: bool = False,
                  io_queue: List[str] = [],
-                 io_expect: List[io.Read | io.Write] = []) -> None:
+                 io_expect: List[Read | Write] = []) -> None:
         super().__init__(visible, name=name, warning=warning, io_queue=io_queue, io_expect=io_expect)
         self.script = script
 
     def run(self) -> None:
         try:
-            _, self.io_actual = io.capture(lambda: run_script(self.script), self.io_queue)
+            _, self.io_actual = io_trace.capture(lambda: run_script(self.script), self.io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student script.")
 
