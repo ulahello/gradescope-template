@@ -118,7 +118,7 @@ class Case:
                 output += f"Console line {line}: want additional line(s)\n"
                 return output
 
-            for oe, oa in itertools.zip(le, la):
+            for oe, oa in itertools.zip_longest(le, la):
                 if oe is None:
                     output += f"Console line {line}: expected end of line, but found {oa.word()} of `{repr(oa.val)}`.\n"
                     return output
