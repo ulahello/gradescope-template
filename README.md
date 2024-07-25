@@ -17,3 +17,8 @@ The zip file must contain the following:
 3. Source code for the autograding script (probably `*.py`)
 
 The [`build.sh`](./build.sh) script creates a conformant ZIP file, but only works on unix-like systems.
+
+## License
+
+This template is licensed under the [MIT No Attribution license](./LICENSE) (SPDX: `MIT-0`).
+
