@@ -7,6 +7,71 @@ import ast
 import inspect
 import io_trace as io
 
+class CaseAdHoc(Case):
+    runner: Callable[["CaseAdHoc"], None]
+    output: str
+
+    def __init__(self,
+                 visible: bool,
+                 name: str,
+                 runner: Callable[["CaseAdHoc"], None],
+                 warning: bool = False) -> None:
+        super().__init__(visible, name=name, warning=warning, io_queue=[], io_expect=[])
+        self.io_actual = []
+
+        self.runner = runner
+
+        self.output = ""
+        self.passed = True
+
+    def run(self) -> None:
+        (self.runner)(self)
+        self.run_post()
+
+    def run_func(self, func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, List[io.Read | io.Write]]:
+        try:
+            ret, io_log = io.capture(func, io_queue=io_queue)
+        except Exception as e:
+            raise AutograderError(e, "An exception was raised while running a student function.")
+
+        return ret, io_log
+
+    def expect_eq(self, expect: Any, actual: Any, msg_prefix: str, cmp: Callable[[Any, Any], bool] = cmp_ret_equ) -> bool:
+        assert len(msg_prefix.splitlines()) == 1
+
+        eq: bool = cmp(expect, actual)
+
+        if eq:
+            self.print(f"{msg_prefix}: got `{repr(actual)}` as expected.")
+        else:
+            self.print(f"{msg_prefix}: expected `{repr(expect)}`, but got `{repr(actual)}`.")
+
+        self.passed = self.passed and eq
+        return eq
+
+    def expect_io(self, expect: List[io.Read | io.Write], actual: List[io.Read | io.Write]) -> bool:
+        self.has_run = True
+        self.io_expect = expect
+        self.io_actual = actual
+
+        io_passed: bool = self.check_io_passed()
+        self.io_passed = io_passed
+        self.print(self.format_console_io_check(), end="")
+
+        self.has_run = False
+        self.io_expect = []
+        self.io_actual = []
+        self.io_passed = None
+
+        self.passed = self.passed and io_passed
+        return io_passed
+
+    def print(self, line: str, end: str = "\n") -> None:
+        self.output += line + end
+
+    def format_output(self) -> str:
+        return self.output
+
 class CaseFunc(Case):
     func: Callable[..., Any]
     args: Tuple
