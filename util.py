@@ -1,4 +1,5 @@
 from core import AutograderError, Case
+from io_trace import Read, Write, LineIter
 
 from importlib.abc import Loader
 from importlib.machinery import ModuleSpec
@@ -7,6 +8,7 @@ from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, It
 import importlib
 import importlib.util as iu
 import inspect
+import itertools
 import json
 import os
 
@@ -89,3 +91,57 @@ def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any]
         return True
 
     return inner
+
+def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
+    if len(expect) != len(actual):
+        return False
+
+    for e, a in zip(expect, actual):
+        if e.val != a.val:
+            return False
+
+    return True
+
+def fmt_io_equ(expect: List[Read | Write],
+               actual: List[Read | Write],
+               passed: bool) -> str:
+    output: str = ""
+
+    if passed and len(expect) != 0:
+        output += "All console I/O lines match.\n"
+
+    line: int = 0
+    for le, la in itertools.zip_longest(LineIter(expect), LineIter(actual)):
+        line += 1
+
+        if le is None:
+            output += f"Console line {line}: too many lines\n"
+            return output
+        elif la is None:
+            output += f"Console line {line}: want additional line(s)\n"
+            return output
+
+        for oe, oa in itertools.zip_longest(le, la):
+            if oe is None:
+                output += f"Console line {line}: expected end of line, but found {oa.word()} of `{repr(oa.val)}`.\n"
+                return output
+            elif oa is None:
+                output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found end of line.\n"
+                return output
+
+            if type(oe) != type(oa):
+                # mismatched read/write
+                output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found {oa.word()} of `{repr(oa.val)}`.\n"
+                return output
+
+            if oe.val != oa.val:
+                output += f"Console line {line} ({oe.word()}): expected `{repr(oe.val)}`, but found `{repr(oa.val)}`.\n"
+                return output
+
+    return output
+
+def fmt_io_verbatim(io: List[Read | Write]) -> str:
+    output: str = ""
+    for op in io:
+        output += op.val
+    return output

@@ -8,6 +8,76 @@ from typing import List, Optional, Any, Callable, Tuple, Dict, Set
 import ast
 import inspect
 
+class CaseIOBase(Case):
+    # List of read operations to pass to stdin. Popped from index 0.
+    # When the queue is empty, defers to OS as expected.
+    io_queue: List[str]
+
+    # Expected sequence of console I/O operations to observe during a test.
+    io_expect: List[Read | Write]
+
+    # Observed sequence of console I/O operations during a test.
+    io_actual: Optional[List[Read | Write]]
+
+    # `True` if the expected I/O operations were observed.
+    io_passed: Optional[bool]
+
+    cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool]
+    fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str]
+
+    def __init__(self,
+                 visible: bool,
+                 name: str,
+                 warning: bool,
+                 io_queue: List[str],
+                 io_expect: List[Read | Write],
+                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool],
+                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str]) -> None:
+        super().__init__(visible, name=name, warning=warning)
+
+        self.io_queue = io_queue
+        # in case we're passed consecutive operations of the same
+        # type, this will merge them (it's a pitfall otherwise)
+        self.io_expect = io_trace.normalize_log(io_expect)
+        self.io_actual = None
+        self.io_passed = None
+        self.cmp_io = cmp_io
+        self.fmt_io = fmt_io
+
+    def check_io_passed(self) -> bool:
+        assert self.has_run
+        assert self.io_expect is not None, "unreachable"
+        assert self.io_actual is not None, "unreachable"
+
+        return (self.cmp_io)(self.io_expect, self.io_actual)
+
+    def check_passed(self) -> None:
+        assert self.has_run
+        assert self.io_expect is not None, "unreachable"
+        assert self.io_actual is not None, "unreachable"
+
+        self.io_passed = self.check_io_passed()
+        self.passed = self.io_passed
+
+    def run_post(self) -> None:
+        assert not self.has_run, "case should only be run once"
+        self.has_run = True
+        self.check_passed()
+
+    def run(self) -> None:
+        assert False, "CaseIOBase.run should be overridden to suit use case"
+
+    def format_console_io_check(self) -> str:
+        assert self.has_run
+        assert self.io_expect is not None, "unreachable"
+        assert self.io_actual is not None, "unreachable"
+        assert self.io_passed is not None, "unreachable"
+
+        return (self.fmt_io)(self.io_expect, self.io_actual, self.io_passed)
+
+    def format_output(self) -> str:
+        return self.format_console_io_check()
+
 class CaseAdHoc(Case):
     runner: Callable[["CaseAdHoc"], None]
     output: str
@@ -17,11 +87,9 @@ class CaseAdHoc(Case):
                  name: str,
                  runner: Callable[["CaseAdHoc"], None],
                  warning: bool = False) -> None:
-        super().__init__(visible, name=name, warning=warning, io_queue=[], io_expect=[])
-        self.io_actual = []
+        super().__init__(visible, name=name, warning=warning)
 
         self.runner = runner
-
         self.output = ""
         self.passed = True
 
@@ -65,23 +133,21 @@ class CaseAdHoc(Case):
         self.passed = self.passed and eq
         return eq
 
-    def expect_io(self, expect: List[Read | Write], actual: List[Read | Write], silence_pass: bool = False) -> bool:
-        self.has_run = True
-        self.io_expect = io_trace.normalize_log(expect)
-        self.io_actual = io_trace.normalize_log(actual)
+    def expect_io(self,
+                  expect: List[Read | Write],
+                  actual: List[Read | Write],
+                  silence_pass: bool = False,
+                  cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+                  fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ) -> bool:
+        expect = io_trace.normalize_log(expect)
+        actual = io_trace.normalize_log(actual)
 
-        io_passed: bool = self.check_io_passed()
-        self.io_passed = io_passed
-        output: str = self.format_console_io_check()
+        io_passed: bool = cmp_io(expect, actual)
+        output: str = fmt_io(expect, actual, io_passed)
         if io_passed and silence_pass:
             pass
         else:
             self.print(output, end="")
-
-        self.has_run = False
-        self.io_expect = []
-        self.io_actual = []
-        self.io_passed = None
 
         self.passed = self.passed and io_passed
         return io_passed
@@ -92,7 +158,7 @@ class CaseAdHoc(Case):
     def format_output(self) -> str:
         return self.output
 
-class CaseFunc(Case):
+class CaseFunc(CaseIOBase):
     func: Callable[..., Any]
     args: Tuple
     cmp_ret: Callable[[Any, Any], bool]
@@ -109,8 +175,12 @@ class CaseFunc(Case):
                  ret_expect: Any = None,
                  cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                  io_queue: List[str] = [],
-                 io_expect: List[Read | Write] = []):
-        super().__init__(visible, name=name, warning=warning, io_queue=io_queue, io_expect=io_expect)
+                 io_expect: List[Read | Write] = [],
+                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ) -> None:
+        super().__init__(visible, name=name, warning=warning,
+                         io_queue=io_queue, io_expect=io_expect,
+                         cmp_io=cmp_io, fmt_io=fmt_io)
         self.func = func
         self.args = args
         self.cmp_ret = cmp_ret
@@ -127,7 +197,7 @@ class CaseFunc(Case):
         self.run_post()
 
     def check_ret_passed(self) -> bool:
-        return self.cmp_ret(self.ret_expect, self.ret_actual)
+        return (self.cmp_ret)(self.ret_expect, self.ret_actual)
 
     def check_passed(self) -> None:
         assert self.has_run
@@ -144,15 +214,19 @@ class CaseFunc(Case):
         output += self.format_console_io_check()
         return output
 
-class CaseScript(Case):
+class CaseScript(CaseIOBase):
     def __init__(self,
                  visible: bool,
                  script: str,
                  name: str,
                  warning: bool = False,
                  io_queue: List[str] = [],
-                 io_expect: List[Read | Write] = []) -> None:
-        super().__init__(visible, name=name, warning=warning, io_queue=io_queue, io_expect=io_expect)
+                 io_expect: List[Read | Write] = [],
+                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ) -> None:
+        super().__init__(visible, name=name, warning=warning,
+                         io_queue=io_queue, io_expect=io_expect,
+                         cmp_io=cmp_io, fmt_io=fmt_io)
         self.script = script
 
     def run(self) -> None:
@@ -178,8 +252,7 @@ class CaseCheckRecursive(Case):
                  source_names: List[str],
                  case_name: str,
                  warning: bool = False):
-        super().__init__(visible, name=case_name, warning=warning, io_queue=[], io_expect=[])
-        self.io_actual = []
+        super().__init__(visible, name=case_name, warning=warning)
 
         self.func = func
         self.func_def_path = func_def_path

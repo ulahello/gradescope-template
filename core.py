@@ -1,9 +1,5 @@
-from io_trace import Read, Write, LineIter
-import io_trace
-
 from io import StringIO
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
-import itertools
 import json
 import traceback
 
@@ -32,61 +28,24 @@ class Case:
     # Whether this Case's failure should be permissible.
     warning: bool
 
-    # List of read operations to pass to stdin. Popped from index 0.
-    # When the queue is empty, defers to OS as expected.
-    io_queue: List[str]
-
-    # Expected sequence of console I/O operations to observe during a test.
-    io_expect: List[Read | Write]
-
-    # Observed sequence of console I/O operations during a test.
-    io_actual: Optional[List[Read | Write]]
-
     # `True` if the `run` method has been called and completed exactly once.
     has_run: bool
 
     # `True` if the Case has been `run` and all checks passed.
     passed: Optional[bool]
 
-    # `True` if the expected I/O operations were observed.
-    io_passed: Optional[bool]
-
     def __init__(self,
                  visible: bool,
                  name: str,
-                 warning: bool,
-                 io_queue: List[str],
-                 io_expect: List[Read | Write]):
+                 warning: bool) -> None:
         self.visible = visible
         self.name = name
         self.warning = warning
-        self.io_queue = io_queue
-        # in case we're passed consecutive operations of the same
-        # type, this will merge them (it's a pitfall otherwise)
-        self.io_expect = io_trace.normalize_log(io_expect)
-
-        self.io_actual = None
-
         self.has_run = False
-        self.io_passed = None
+        self.passed = None
 
     def check_passed(self) -> None:
-        assert self.has_run
-        self.io_passed = self.check_io_passed()
-        self.passed = self.io_passed
-
-    def check_io_passed(self) -> bool:
-        assert self.has_run
-        assert self.io_expect is not None and self.io_actual is not None, "unreachable"
-
-        if len(self.io_expect) != len(self.io_actual):
-            return False
-
-        for e, a in zip(self.io_expect, self.io_actual):
-            if e.val != a.val:
-                return False
-
-        return True
+        assert False, "Case.check_passed should be overridden to suit use case"
 
     def run_post(self) -> None:
         assert not self.has_run, "case should only be run once"
@@ -96,49 +55,8 @@ class Case:
     def run(self) -> None:
         assert False, "Case.run should be overridden to suit use case (ex. CaseFunc.run)"
 
-    def format_console_io_check(self) -> str:
-        # TODO: could display console i/o as it would appear while distinguishing reads and writes by color (should?)
-
-        assert self.has_run
-        assert self.io_actual is not None, "unreachable"
-
-        output: str = ""
-
-        if self.io_passed and len(self.io_expect) != 0:
-            output += "All console I/O lines match.\n"
-
-        line: int = 0
-        for le, la in itertools.zip_longest(LineIter(self.io_expect), LineIter(self.io_actual)):
-            line += 1
-
-            if le is None:
-                output += f"Console line {line}: too many lines\n"
-                return output
-            elif la is None:
-                output += f"Console line {line}: want additional line(s)\n"
-                return output
-
-            for oe, oa in itertools.zip_longest(le, la):
-                if oe is None:
-                    output += f"Console line {line}: expected end of line, but found {oa.word()} of `{repr(oa.val)}`.\n"
-                    return output
-                elif oa is None:
-                    output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found end of line.\n"
-                    return output
-
-                if type(oe) != type(oa):
-                    # mismatched read/write
-                    output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found {oa.word()} of `{repr(oa.val)}`.\n"
-                    return output
-
-                if oe.val != oa.val:
-                    output += f"Console line {line} ({oe.word()}): expected `{repr(oe.val)}`, but found `{repr(oa.val)}`.\n"
-                    return output
-
-        return output
-
     def format_output(self) -> str:
-        return self.format_console_io_check()
+        assert False, "Case.format_output should be overridden to suit use case"
 
 # Summary of test cases. It is "Good" because nothing went wrong while
 # loading them, eg. the submission can be tested.
