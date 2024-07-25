@@ -67,8 +67,8 @@ class CaseAdHoc(Case):
 
     def expect_io(self, expect: List[Read | Write], actual: List[Read | Write], silence_pass: bool = False) -> bool:
         self.has_run = True
-        self.io_expect = expect
-        self.io_actual = actual
+        self.io_expect = io_trace.normalize_log(expect)
+        self.io_actual = io_trace.normalize_log(actual)
 
         io_passed: bool = self.check_io_passed()
         self.io_passed = io_passed
