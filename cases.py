@@ -29,7 +29,10 @@ class CaseAdHoc(Case):
         (self.runner)(self)
         self.run_post()
 
-    def run_func(self, func: Callable[[], Any], io_queue: List[str] = [], msg: str = "An exception was raised while running a student function.") -> Tuple[Any, List[Read | Write]]:
+    def run_func(self,
+                 func: Callable[[], Any],
+                 io_queue: List[str] = [],
+                 msg: str = "An exception was raised while running a student function.") -> Tuple[Any, List[Read | Write]]:
         try:
             ret, io_log = io_trace.capture(func, io_queue=io_queue)
         except Exception as e:
