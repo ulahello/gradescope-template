@@ -86,7 +86,7 @@ class CaseAdHoc(Case):
         self.passed = self.passed and io_passed
         return io_passed
 
-    def print(self, line: str, end: str = "\n") -> None:
+    def print(self, line: str = "", end: str = "\n") -> None:
         self.output += line + end
 
     def format_output(self) -> str:
