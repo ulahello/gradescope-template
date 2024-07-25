@@ -11,6 +11,9 @@ class Read:
     def __repr__(self) -> str:
         return f"Read({repr(self.val)})"
 
+    def __eq__(self, other: Any) -> bool:
+        return other is Read and self.val == other.val
+
     def word(self) -> str:
         return "read"
 
@@ -22,6 +25,9 @@ class Write:
 
     def __repr__(self) -> str:
         return f"Write({repr(self.val)})"
+
+    def __eq__(self, other: Any) -> bool:
+        return other is Write and self.val == other.val
 
     def word(self) -> str:
         return "write"
