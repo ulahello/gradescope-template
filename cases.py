@@ -62,14 +62,18 @@ class CaseAdHoc(Case):
         self.passed = self.passed and eq
         return eq
 
-    def expect_io(self, expect: List[Read | Write], actual: List[Read | Write]) -> bool:
+    def expect_io(self, expect: List[Read | Write], actual: List[Read | Write], silence_pass: bool = False) -> bool:
         self.has_run = True
         self.io_expect = expect
         self.io_actual = actual
 
         io_passed: bool = self.check_io_passed()
         self.io_passed = io_passed
-        self.print(self.format_console_io_check(), end="")
+        output: str = self.format_console_io_check()
+        if io_passed and silence_pass:
+            pass
+        else:
+            self.print(output, end="")
 
         self.has_run = False
         self.io_expect = []
