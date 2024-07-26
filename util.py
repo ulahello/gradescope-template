@@ -93,7 +93,16 @@ def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any]
     return inner
 
 def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
-    return expect == actual
+    if len(expect) != len(actual):
+        return False
+
+    for e, a in zip(expect, actual):
+        if type(e) != type(a):
+            return False
+        if e.val != a.val:
+            return False
+
+    return True
 
 def fmt_io_equ(expect: List[Read | Write],
                actual: List[Read | Write],
