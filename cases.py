@@ -151,8 +151,11 @@ class CaseAdHoc(Case):
         self.passed = self.passed and io_passed
         return io_passed
 
-    def print(self, line: str = "", end: str = "\n") -> None:
-        self.output += line + end
+    def print(self, line: str = "", end: str = "\n", new_line: bool = False) -> None:
+        content: str = line + end
+        if new_line and not self.output.endswith("\n"):
+            self.output += "\n"
+        self.output += content
 
     def format_output(self) -> str:
         return self.output
