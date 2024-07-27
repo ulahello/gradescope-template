@@ -127,11 +127,7 @@ class CaseAdHoc(Case):
         assert len(msg_prefix.splitlines()) == 1
 
         eq: bool = cmp(expect, actual)
-
-        if eq:
-            self.print(f"{msg_prefix}: got `{repr(actual)}` as expected.")
-        else:
-            self.print(f"{msg_prefix}: expected `{repr(expect)}`, but got `{repr(actual)}`.")
+        self.print(fmt_ret(expect, actual, eq, msg_prefix))
 
         self.passed = self.passed and eq
         return eq
@@ -209,11 +205,11 @@ class CaseFunc(CaseIOBase):
         self.passed = self.io_passed and self.ret_passed
 
     def format_output(self) -> str:
-        output: str = "Return value: "
-        if self.ret_passed:
-            output += f"got `{repr(self.ret_actual)}` as expected.\n"
-        else:
-            output += f"expected `{repr(self.ret_expect)}`, but got `{repr(self.ret_actual)}`.\n"
+        assert self.has_run
+        assert self.ret_passed is not None, "unreachable"
+
+        output: str = ""
+        output += fmt_ret(self.ret_expect, self.ret_actual, self.ret_passed, "Return value")
         output += self.format_console_io_check()
         return output
 

@@ -104,6 +104,14 @@ def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
 
     return True
 
+def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
+    output: str = f"{prefix}: "
+    if eq:
+        output += f"got `{repr(actual)}` as expected.\n"
+    else:
+        output += f"expected `{repr(expect)}`, but got `{repr(actual)}`.\n"
+    return output
+
 def fmt_io_equ(expect: List[Read | Write],
                actual: List[Read | Write],
                passed: bool) -> str:
