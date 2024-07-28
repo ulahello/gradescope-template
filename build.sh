@@ -8,7 +8,7 @@ if [ "${SCRIPT}" = "" ]; then
 fi
 
 # ./script_unit_section_exercise.py -> ./zip_unit_section_exercise.zip
-ZIP="`basename -s '.py' "${SCRIPT}"`"
+ZIP="`basename "${SCRIPT}" '.py'`"
 ZIP="${ZIP#script_}"
 ZIP="./zip_${ZIP}.zip"
 
