@@ -133,7 +133,6 @@ def collect_funcs(mod_name: str, mod_src: str) -> Tuple[List[Func], List[Tuple[F
 
     return (funcs, todo_resolve)
 
-
 def resolve_unresolved(funcs: List[Func],
                        todo_resolve: List[Tuple[Func, Optional[str], str]]) -> None:
     while len(todo_resolve) > 0:
