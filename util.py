@@ -4,7 +4,7 @@ from io_trace import Read, Write, LineIter
 from importlib.abc import Loader
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, cast
 import importlib
 import importlib.util as iu
 import inspect
@@ -69,6 +69,13 @@ def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     except Exception as e:
         raise AutograderError(e, "Failed to load student submission.")
     return mod, spec
+
+def count_freq(iter: Iterable[Hashable]) -> Dict[Hashable, int]:
+    f: Dict[Hashable, int] = {}
+    for k in iter:
+        f.setdefault(k, 0)
+        f[k] += 1
+    return f
 
 def cmp_ret_epsilon(expect: Any, actual: Any,
                     epsilon: float = 0.00001) -> bool: # @CHANGEME (or write your own)
