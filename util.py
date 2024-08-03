@@ -100,16 +100,8 @@ def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any]
     return inner
 
 def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
-    if len(expect) != len(actual):
-        return False
-
-    for e, a in zip(expect, actual):
-        if type(e) != type(a):
-            return False
-        if e.val != a.val:
-            return False
-
-    return True
+    op_eq = lambda e, a: type(e) == type(a) and e.val == a.val
+    return cmp_ret_seq(op_eq)(expect, actual)
 
 def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
     output: str = f"{prefix}: "
