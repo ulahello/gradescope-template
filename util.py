@@ -77,6 +77,9 @@ def count_freq(iter: Iterable[Hashable]) -> Dict[Hashable, int]:
         f[k] += 1
     return f
 
+def cmp_ret_nop(expect: Any, actual: Any) -> bool:
+    return True
+
 def cmp_ret_epsilon(expect: Any, actual: Any,
                     epsilon: float = 0.00001) -> bool: # @CHANGEME (or write your own)
     if not (isinstance(actual, int) or isinstance(actual, float)):
