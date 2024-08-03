@@ -13,4 +13,4 @@ ZIP="${ZIP#script_}"
 ZIP="./zip_${ZIP}.zip"
 
 zip "${ZIP}" setup.sh run_autograder \
-    io_trace.py core.py cases.py recursion.py util.py "${SCRIPT}"
+    io_trace.py core.py cases.py recursion.py pipeline.py util.py "${SCRIPT}"
