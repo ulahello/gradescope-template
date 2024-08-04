@@ -68,13 +68,13 @@ class SummaryGood:
     max_score: float
     score: float
 
-    tests: List[Dict]
+    tests: List[Dict[str, Any]]
     num_visible: int
     num_passed_visible: int
     num_scored: int
     num_passed_scored: int
 
-    def __init__(self, tests: List[Dict], max_score: float, execution_time: int) -> None:
+    def __init__(self, tests: List[Dict[str, Any]], max_score: float, execution_time: int) -> None:
         self.execution_time = execution_time
 
         self.output = ""
@@ -168,8 +168,8 @@ class SummaryBad:
                 "stdout_visibility": "visible",
             }))
 
-def run_test_cases(cases: List[Case]) -> List[Dict]:
-    tests: List[Dict] = []
+def run_test_cases(cases: List[Case]) -> List[Dict[str, Any]]:
+    tests = []
     for i, case in enumerate(cases):
         passed: bool
         output: str
@@ -190,7 +190,7 @@ def run_test_cases(cases: List[Case]) -> List[Dict]:
             output = output_f.getvalue()
 
         status = "passed" if passed else "failed"
-        test_info: Dict = {
+        test_info: Dict[str, Any] = {
             "name": case.name,
             "status": status,
             "output": f"{output}",
@@ -210,13 +210,13 @@ def run_test_cases(cases: List[Case]) -> List[Dict]:
     return tests
 
 
-def load_submission_metadata() -> Dict:
+def load_submission_metadata() -> Dict[str, Any]:
     with open("submission_metadata.json", "r") as f:
         s = f.read()
-        metadata: Dict = json.loads(s)
+        metadata: Dict[str, Any] = json.loads(s)
         return metadata
 
-def autograder_main(get_test_cases: Callable[[Dict], List[Case]]) -> None:
+def autograder_main(get_test_cases: Callable[[Dict[str, Any]], List[Case]]) -> None:
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
@@ -232,7 +232,7 @@ def autograder_main(get_test_cases: Callable[[Dict], List[Case]]) -> None:
     EXECUTION_TIME: int = 60
 
     # run the test cases!
-    tests: List[Dict] = run_test_cases(cases)
+    tests: List[Dict[str, Any]] = run_test_cases(cases)
     # how did they go?
     summary: SummaryGood = SummaryGood(tests, max_score=max_score, execution_time=EXECUTION_TIME)
 

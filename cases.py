@@ -162,7 +162,7 @@ class CaseAdHoc(Case):
 
 class CaseFunc(CaseIOBase):
     func: Callable[..., Any]
-    args: Tuple
+    args: Tuple[Any, ...]
     cmp_ret: Callable[[Any, Any], bool]
     ret_expect: Any
     ret_actual: Any
@@ -173,7 +173,7 @@ class CaseFunc(CaseIOBase):
                  func: Callable[..., Any],
                  name: str,
                  warning: bool = False,
-                 args: Tuple = (),
+                 args: Tuple[Any, ...] = (),
                  ret_expect: Any = None,
                  cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                  io_queue: List[str] = [],

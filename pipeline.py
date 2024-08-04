@@ -10,7 +10,7 @@ import traceback
 class EarlyReturn(Exception):
     pass
 
-def fmt_args(args: Tuple) -> str:
+def fmt_args(args: Tuple[Any, ...]) -> str:
     if len(args) == 1:
         (arg,) = args
         return f"({repr(arg)})"
@@ -55,8 +55,8 @@ class CasePipeline(CaseAdHoc):
         if self.passed:
             self.print("All steps completed successfully.")
 
-    def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple,
-             args_test: Optional[Tuple] = None,
+    def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
+             args_test: Optional[Tuple[Any, ...]] = None,
              cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
              fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
              varname: Optional[str] = None) -> Tuple[GoldenObj, TestObj]:
@@ -75,8 +75,8 @@ class CasePipeline(CaseAdHoc):
 
     def method(self, golden: GoldenObj, golden_f: Callable[..., Any],
                test: TestObj, test_f: Callable[..., Any],
-               args: Tuple = (),
-               args_test: Optional[Tuple] = None,
+               args: Tuple[Any, ...] = (),
+               args_test: Optional[Tuple[Any, ...]] = None,
                cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                fmt_ret: Callable[[Any, Any, bool, str], str] = fmt_ret,
                repr_ret: Callable[[Any], str] = repr,
@@ -108,8 +108,8 @@ class CasePipeline(CaseAdHoc):
 
     def funcall(self,
                 golden_f: Callable[..., Any], test_f: Callable[..., Any],
-                args: Tuple = (),
-                args_test: Optional[Tuple] = None,
+                args: Tuple[Any, ...] = (),
+                args_test: Optional[Tuple[Any, ...]] = None,
                 cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                 fmt_ret: Callable[[Any, Any, bool, str], str] = fmt_ret,
                 repr_ret: Callable[[Any], str] = repr,
