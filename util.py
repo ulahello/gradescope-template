@@ -12,6 +12,8 @@ import itertools
 import json
 import os
 
+# TODO: would be nice to be able to check all expected attributes in one sweep and present all errors to student, rather than one-by-one (good compilers will do this, it is nice)
+
 def get_attribute(obj: Any, attr: str, msg: str) -> Any:
     try:
         thing = getattr(obj, attr)
