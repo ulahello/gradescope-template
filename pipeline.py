@@ -90,7 +90,7 @@ class CasePipeline(CaseAdHoc):
             varname = self.varname
         expr: str
         if expr_override is None:
-            expr = f"{varname}.{golden_f.__name__}{fmt_args(args)}"
+            expr = f"{varname}.{test_f.__name__}{fmt_args(args)}"
         else:
             expr = expr_override
         args_golden = args
@@ -120,7 +120,7 @@ class CasePipeline(CaseAdHoc):
                 expr_override: Optional[str] = None) -> Tuple[Any, Any]:
         expr: str
         if expr_override is None:
-            expr = f"{golden_f.__name__}{fmt_args(args)}"
+            expr = f"{test_f.__name__}{fmt_args(args)}"
         else:
             expr = expr_override
         if assign_to is not None:
