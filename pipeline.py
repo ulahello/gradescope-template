@@ -50,9 +50,9 @@ class CasePipeline(CaseAdHoc):
     def start_step_log(self) -> None:
         self.print("```text")
 
-    def finish_step_log(self) -> None:
+    def finish_step_log(self, joy: bool = True) -> None:
         self.print("```")
-        if self.passed:
+        if joy and self.passed:
             self.print("All steps completed successfully.")
 
     def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
