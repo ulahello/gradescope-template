@@ -127,7 +127,7 @@ class CaseAdHoc(Case):
         assert len(msg_prefix.splitlines()) == 1
 
         eq: bool = cmp(expect, actual)
-        self.print(fmt_ret(expect, actual, eq, msg_prefix))
+        self.print(fmt_ret(expect, actual, eq, msg_prefix), end="")
 
         self.passed = self.passed and eq
         return eq
