@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -e
 
 mkdir -p results
 SCRIPT=`find 'source' -name 'script_*.py' -type f | head -n 1`

@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+set -e
+
 rm -vf autograder.zip zip_*.zip
 
 SCRIPT="`find . -name 'script_*.py' -type f | head -n 1`"
