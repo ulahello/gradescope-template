@@ -24,11 +24,11 @@ DST="${2}"
 TEMPLATE_VER="`cat "${DST}/CHECKOUT"`"
 
 # get clean template state
-pushd "${TEMPLATE}"
+cd "${TEMPLATE}"
 git checkout "${TEMPLATE_VER}"
 git reset --hard
 git clean -fdx
-popd
+cd -
 
 # copy template to destination
 cp -r --update=none "${TEMPLATE}/"* "${DST}"
