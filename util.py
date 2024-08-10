@@ -95,6 +95,13 @@ def cmp_ret_equ(expect: Any, actual: Any) -> bool:
 
 def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any], Sequence[Any]], bool]:
     def inner(expect: Sequence[Any], actual: Sequence[Any]) -> bool:
+        for req in [
+                "__getitem__",
+                "__len__",
+        ]:
+            if not hasattr(actual, req):
+                # it's not a sequence! i am weeping!
+                return False
         if len(expect) != len(actual):
             return False
         for expect_elem, actual_elem in zip(expect, actual):
