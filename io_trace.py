@@ -273,12 +273,12 @@ def init() -> None:
     stdin = IOTracer(cast(TextIO, MockReads(sys.stdin, [])))
     stdout = IOTracer(sys.stdout)
 
-    sys.stdin = stdin # type: ignore[assignment]
-    sys.stdout = stdout # type: ignore[assignment]
+    sys.stdin = stdin
+    sys.stdout = stdout
 
 def deinit() -> None:
-    sys.stdin = sys.stdin.inner.inner # type: ignore[attr-defined]
-    sys.stdout = sys.stdout.inner # type: ignore[attr-defined]
+    sys.stdin = sys.stdin.inner.inner # type: ignore[union-attr]
+    sys.stdout = sys.stdout.inner # type: ignore[union-attr]
 
     global stdin, stdout, stderr
     stdin = None
