@@ -123,11 +123,17 @@ class CaseAdHoc(Case):
         self.passed = self.passed and expect
         return expect
 
-    def expect_eq(self, expect: Any, actual: Any, msg_prefix: str, cmp: Callable[[Any, Any], bool] = cmp_ret_equ) -> bool:
+    def expect_eq(self, expect: Any, actual: Any,
+                  msg_prefix: str,
+                  cmp: Callable[[Any, Any], bool] = cmp_ret_equ,
+                  silence_pass: bool = False) -> bool:
         assert len(msg_prefix.splitlines()) == 1
 
         eq: bool = cmp(expect, actual)
-        self.print(fmt_ret(expect, actual, eq, msg_prefix), end="")
+        if eq and silence_pass:
+            pass
+        else:
+            self.print(fmt_ret(expect, actual, eq, msg_prefix), end="")
 
         self.passed = self.passed and eq
         return eq
