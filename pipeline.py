@@ -21,6 +21,7 @@ class CasePipeline(CaseAdHoc):
     TestObj = TypeVar("TestObj")
 
     varname: str
+    in_code: bool
 
     def __init__(self,
                  visible: bool,
@@ -31,6 +32,7 @@ class CasePipeline(CaseAdHoc):
         super().__init__(visible=visible, name=name, warning=warning,
                          runner=cast(Callable[["CaseAdHoc"], None], runner))
         self.varname = varname
+        self.in_code = False
 
     def catch(self, f: Callable[[], Any]) -> Tuple[Any, List[Read | Write]]:
         try:
@@ -48,12 +50,18 @@ class CasePipeline(CaseAdHoc):
             raise EarlyReturn
 
     def start_step_log(self) -> None:
+        if self.in_code:
+            return
         self.print("```text")
+        self.in_code = True
 
     def finish_step_log(self, joy: bool = True) -> None:
+        if not self.in_code:
+            return
         self.print("```")
         if joy and self.passed:
             self.print("All steps completed successfully.")
+        self.in_code = False
 
     def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
              args_test: Optional[Tuple[Any, ...]] = None,
