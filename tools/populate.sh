@@ -40,8 +40,10 @@ if [ "`find "${DST}" -name "script_*.py" -type f | wc -l`" -gt 1 ]; then
 fi
 
 # copy sources
+cd "${DST}"
 printf '%s\n' "${SOURCES}" | while read source; do
 	if [ "${source}" != '' ]; then
 		cp -vr --update=none "${source}" "${DST}"
 	fi
 done
+cd -
