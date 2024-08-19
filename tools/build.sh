@@ -4,9 +4,9 @@ set -e
 if [ "${1}" = "-h" -o "${1}" = "--help" ]; then
 	echo "Usage: ${0} <TEMPLATE_DIR> <DST>"
 	echo
-	echo "This script zips up relevant files from the template directory"
-	echo "TEMPLATE_DIR into a Gradescope compliant zip file, which will"
-	echo "then be deposited to DST."
+	echo "This script zips up relevant files from the script/template"
+	echo "directory TEMPLATE_DIR into a Gradescope compliant zip file,"
+	echo "which will then be deposited to DST."
 	exit 0
 fi
 
