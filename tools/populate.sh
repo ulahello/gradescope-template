@@ -13,10 +13,9 @@ if [ "${1}" = "-h" -o "${1}" = "--help" ]; then
 fi
 
 if [ "${#}" -ne 2 ]; then
-	echo "Error: expected exactly 3 arguments (try --help for help)."
+	echo "Error: expected exactly 2 arguments (try --help for help)."
 	exit 1
 fi
-
 
 TEMPLATE="${1}"
 DST="${2}"
