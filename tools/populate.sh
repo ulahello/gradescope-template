@@ -22,6 +22,7 @@ TEMPLATE="${1}"
 DST="${2}"
 
 TEMPLATE_VER="`cat "${DST}/CHECKOUT"`"
+SOURCES="`cat "${DST}/SOURCES" || true`"
 
 # get clean template state
 cd "${TEMPLATE}"
@@ -37,3 +38,10 @@ cp -r --update=none "${TEMPLATE}/"* "${DST}"
 if [ "`find "${DST}" -name "script_*.py" -type f | wc -l`" -gt 1 ]; then
 	rm -v "${DST}/script_unit_section_exercise.py"
 fi
+
+# copy sources
+printf '%s\n' "${SOURCES}" | while read source; do
+	if [ "${source}" != '' ]; then
+		cp -vr --update=none "${source}" "${DST}"
+	fi
+done
