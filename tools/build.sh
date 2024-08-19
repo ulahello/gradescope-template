@@ -18,6 +18,8 @@ fi
 TEMPLATE_DIR="${1}"
 DST="${2}"
 
+SOURCES="`cat "${TEMPLATE_DIR}/SOURCES" || true`"
+
 cd "${TEMPLATE_DIR}"
 
 rm -vf autograder.zip zip_*.zip
@@ -37,6 +39,13 @@ zip "${ZIP}" setup.sh run_autograder \
     io_trace.py core.py cases.py recursion.py pipeline.py util.py "${SCRIPT}" \
     golden.py
 
-cd -
+# zip up sources
+printf '%s\n' "${SOURCES}" | while read source; do
+	if [ "${source}" != '' ]; then
+		cp -vr --update=none "${source}" "${DST}"
+		zip "${ZIP}" "`basename "${source}"`"
+	fi
+done
 
+cd -
 mv -v "${TEMPLATE_DIR}/${ZIP}" "${DST}"
