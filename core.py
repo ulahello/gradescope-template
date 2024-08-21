@@ -25,12 +25,10 @@ class AutograderError(Exception):
 def format_traceback(payload: Exception) -> str:
     f = StringIO("")
 
-    exception: Optional[Exception] = None
-    if type(payload) == AutograderError:
-        print(payload.msg, file=f)
-        exception = payload.inner
-    else:
-        exception = payload
+    exception: Optional[Exception] = payload
+    while type(exception) == AutograderError:
+        print(exception.msg, file=f)
+        exception = exception.inner
 
     if exception is not None:
         print("```text", file=f)

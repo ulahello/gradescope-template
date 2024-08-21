@@ -54,6 +54,13 @@ def expect_n_submissions(n: int) -> List[str]:
     return files
 
 submission_number: int = 0
+
+def load_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
+    try:
+        return run_script(fname)
+    except Exception as e:
+        raise AutograderError(e, "Failed to load student submission.")
+
 def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     global submission_number
     submission_number += 1
@@ -67,10 +74,7 @@ def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     assert loader is not None, "docs say 'Finders should always set this'"
 
     mod: ModuleType = iu.module_from_spec(spec)
-    try:
-        loader.exec_module(mod) # @raise
-    except Exception as e:
-        raise AutograderError(e, "Failed to load student submission.")
+    loader.exec_module(mod) # @raise
     return mod, spec
 
 def count_freq(iter: Iterable[Hashable]) -> Dict[Hashable, int]:
