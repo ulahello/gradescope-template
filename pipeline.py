@@ -50,13 +50,13 @@ class CasePipeline(CaseAdHoc):
     def start_step_log(self) -> None:
         if self.in_code:
             return
-        self.print("```text")
+        self.print("```text", new_line=True)
         self.in_code = True
 
     def finish_step_log(self, joy: bool = True) -> None:
         if not self.in_code:
             return
-        self.print("```")
+        self.print("```", new_line=True)
         if joy and self.passed:
             self.print("All steps completed successfully.")
         self.in_code = False
@@ -124,6 +124,7 @@ class CasePipeline(CaseAdHoc):
                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
                 assign_to: Optional[str] = None,
                 expr_override: Optional[str] = None) -> Tuple[Any, Any]:
+        self.start_step_log()
         expr: str
         if expr_override is None:
             expr = f"{test_f.__name__}{fmt_args(args)}"
@@ -141,11 +142,11 @@ class CasePipeline(CaseAdHoc):
         if assign_to is None and ret is not None:
             self.print(repr_ret(ret))
         if not self.expect(cmp_ret(ret_expect, ret)):
-            self.print("```", new_line=True)
+            self.finish_step_log(joy=False)
             self.print(fmt_ret(ret_expect, ret, False, describe_ret), end="")
             raise EarlyReturn
         if not self.expect(cmp_io(io_expect, io)):
-            self.print("```", new_line=True)
+            self.finish_step_log(joy=False)
             self.print(fmt_io(io_expect, io, False), end="")
             raise EarlyReturn
         return ret_expect, ret
