@@ -1,4 +1,4 @@
-from core import AutograderError, Case
+from core import AutograderError, Case, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write, LineIter
 
 from importlib.abc import Loader
@@ -45,7 +45,7 @@ def check_subclass(this: Any, subclass_of: Any) -> None:
 def expect_n_submissions(n: int) -> List[str]:
     files = []
 
-    for entry in os.scandir("submission"):
+    for entry in os.scandir(WHERE_THE_SUBMISSION_IS):
         if entry.is_file():
             files.append(entry.name)
 
@@ -59,7 +59,8 @@ def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     submission_number += 1
     modname = f"student_submission_{submission_number}" # just want a unique module name that isn't insane
 
-    spec: Optional[ModuleSpec] = iu.spec_from_file_location(modname, f"submission/{fname}")
+    location = f"{WHERE_THE_SUBMISSION_IS}/{fname}"
+    spec: Optional[ModuleSpec] = iu.spec_from_file_location(modname, location)
     assert spec is not None, f"'{fname}' should exist"
 
     loader: Optional[Loader] = spec.loader

@@ -1,6 +1,9 @@
 from io import StringIO
+from pathlib import PurePath
+from traceback import FrameSummary
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
 import json
+import os
 import traceback
 
 # TODO: students may use print debugging. make sure that is useful and provides feedback??
@@ -8,6 +11,7 @@ import traceback
 # TODO: script should not be able to hang if exact console I/O interaction spelled out (possible to see that it's doing a read when we expected end?)
 
 WHERE_THE_RESULTS_GO: str = "results/results.json"
+WHERE_THE_SUBMISSION_IS: str = "submission"
 OUTPUT_FORMAT: str = "md"
 
 class AutograderError(Exception):
@@ -17,6 +21,46 @@ class AutograderError(Exception):
     def __init__(self, exception: Optional[Exception], msg: str):
         self.msg = msg
         self.inner = exception
+
+def format_traceback(payload: Exception) -> str:
+    f = StringIO("")
+
+    exception: Optional[Exception] = None
+    if type(payload) == AutograderError:
+        print(payload.msg, file=f)
+        exception = payload.inner
+    else:
+        exception = payload
+
+    if exception is not None:
+        print("```text", file=f)
+
+        # we don't want to print internal autograding nonsense, only
+        # the relevant student frames
+        frames: List[FrameSummary] = traceback.extract_tb(exception.__traceback__)
+        filtered: List[FrameSummary] = []
+        for frame in frames:
+            path = PurePath(frame.filename)
+            parent_dir = os.path.basename(path.parent)
+            if parent_dir == WHERE_THE_SUBMISSION_IS:
+                filtered.append(frame)
+            else:
+                # it's autograder source code!
+                pass
+
+        # print header
+        for line in traceback.format_exception(exception)[:1]: # @fragile: signature changed slightly in 3.10
+            print(line, end="", file=f)
+        # print filtered exceptions
+        for line in traceback.format_list(filtered):
+            print(line, end="", file=f)
+        # print exception message
+        for line in traceback.format_exception_only(exception): # @fragile: signature changed slightly in 3.10
+            print(line, end="", file=f)
+
+        print("```", file=f)
+
+    return f.getvalue()
 
 class Case:
     # Passed to Gradescope as either "visible" or "hidden".
@@ -152,12 +196,7 @@ class SummaryBad:
         print("The autograder thinks this is an issue on the student's end, but please reach out if you don't think so, or if you have questions.", file=self.output_f)
         print(file=self.output_f)
 
-        if self.exception.inner is None:
-            print(self.exception.msg, file=self.output_f)
-        else:
-            print("```", file=self.output_f)
-            traceback.print_exception(self.exception, file=self.output_f) # @fragile: signature changed slightly in 3.10
-            print("```", file=self.output_f)
+        print(format_traceback(self.exception), end="", file=self.output_f)
 
     def write_to_results(self) -> None:
         with open(WHERE_THE_RESULTS_GO, "w") as f:
@@ -180,14 +219,7 @@ def run_test_cases(cases: List[Case]) -> List[Dict[str, Any]]:
             output = case.format_output()
         except AutograderError as e:
             passed = False
-            output_f: StringIO = StringIO("")
-            if e.inner is None:
-                print(e.msg, file=output_f)
-            else:
-                print("```", file=output_f)
-                traceback.print_exception(e, file=output_f) # @fragile: signature changed slightly in 3.10
-                print("```", file=output_f)
-            output = output_f.getvalue()
+            output = format_traceback(e)
 
         status = "passed" if passed else "failed"
         test_info: Dict[str, Any] = {

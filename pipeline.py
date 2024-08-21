@@ -1,11 +1,11 @@
 from cases import CaseAdHoc
+from core import format_traceback
 from io_trace import Read, Write
 from util import *
 import io_trace
 
 from io import StringIO
 from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, cast
-import traceback
 
 class EarlyReturn(Exception):
     pass
@@ -42,10 +42,8 @@ class CasePipeline(CaseAdHoc):
             self.expect(False)
 
             # print exception
-            output_f = StringIO("")
-            traceback.print_exception(e, file=output_f) # @fragile: signature changed slightly in 3.10
-            self.print(output_f.getvalue(), end="")
-            self.print("```")
+            self.finish_step_log(joy=False)
+            self.print(format_traceback(e), end="")
 
             raise EarlyReturn
 
