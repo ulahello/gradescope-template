@@ -10,12 +10,6 @@ from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, cast
 class EarlyReturn(Exception):
     pass
 
-def fmt_args(args: Tuple[Any, ...]) -> str:
-    if len(args) == 1:
-        (arg,) = args
-        return f"({repr(arg)})"
-    return repr(args)
-
 class CasePipeline(CaseAdHoc):
     GoldenObj = TypeVar("GoldenObj")
     TestObj = TypeVar("TestObj")

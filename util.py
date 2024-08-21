@@ -167,3 +167,9 @@ def fmt_io_verbatim(io: List[Read | Write]) -> str:
     for op in io:
         output += op.val
     return output
+
+def fmt_args(args: Tuple[Any, ...]) -> str:
+    if len(args) == 1:
+        (arg,) = args
+        return f"({repr(arg)})"
+    return repr(args)
