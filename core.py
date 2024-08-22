@@ -2,6 +2,7 @@ from io import StringIO
 from pathlib import PurePath
 from traceback import FrameSummary
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
+import inspect
 import json
 import os
 import traceback
@@ -23,39 +24,45 @@ class AutograderError(Exception):
         self.inner = exception
 
 def format_traceback(payload: Exception) -> str:
+    def frame_predicate(filename: str) -> bool:
+        path = PurePath(filename)
+        parent_dir = os.path.basename(path.parent)
+        return parent_dir == WHERE_THE_SUBMISSION_IS
+
+    def filter_tb(exc: BaseException, seen: Set[int]) -> None:
+        if id(exc) in seen:
+            return
+        seen.add(id(exc))
+
+        tb = exc.__traceback__
+        while tb is not None:
+            tb_info = inspect.getframeinfo(tb)
+            tb = tb.tb_next
+            if not frame_predicate(tb_info.filename):
+                exc.__traceback__ = tb
+
+        cause = exc.__cause__
+        context = exc.__context__
+        if cause is not None:
+            filter_tb(cause, seen)
+        if context is not None:
+            filter_tb(context, seen)
+
     f = StringIO("")
 
+    # don't want to print an AutograderError.
+    # keep getting at the inner exception.
     exception: Optional[Exception] = payload
     while type(exception) == AutograderError:
         print(exception.msg, file=f)
         exception = exception.inner
 
     if exception is not None:
+        filter_tb(exception, set())
+
         print("```text", file=f)
-
-        # we don't want to print internal autograding nonsense, only
-        # the relevant student frames
-        frames: List[FrameSummary] = traceback.extract_tb(exception.__traceback__)
-        filtered: List[FrameSummary] = []
-        for frame in frames:
-            path = PurePath(frame.filename)
-            parent_dir = os.path.basename(path.parent)
-            if parent_dir == WHERE_THE_SUBMISSION_IS:
-                filtered.append(frame)
-            else:
-                # it's autograder source code!
-                pass
-
-        # print header
-        for line in traceback.format_exception(exception)[:1]: # @fragile: signature changed slightly in 3.10
+        for line in traceback.format_exception(exception): # @fragile: signature changed slightly in 3.10
             print(line, end="", file=f)
-        # print filtered exceptions
-        for line in traceback.format_list(filtered):
-            print(line, end="", file=f)
-        # print exception message
-        for line in traceback.format_exception_only(exception): # @fragile: signature changed slightly in 3.10
-            print(line, end="", file=f)
-
         print("```", file=f)
 
     return f.getvalue()
