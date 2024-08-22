@@ -38,7 +38,9 @@ def format_traceback(payload: Exception) -> str:
         while tb is not None:
             tb_info = inspect.getframeinfo(tb)
             tb = tb.tb_next
-            if not frame_predicate(tb_info.filename):
+            if frame_predicate(tb_info.filename):
+                break
+            else:
                 exc.__traceback__ = tb
 
         cause = exc.__cause__
