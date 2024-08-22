@@ -48,4 +48,4 @@ printf '%s\n' "${SOURCES}" | while read source; do
 done
 
 cd -
-mv -v "${TEMPLATE_DIR}/${ZIP}" "${DST}"
+mv -v "${TEMPLATE_DIR}/${ZIP}" "${DST}" || true
