@@ -57,6 +57,17 @@ class CasePipeline(CaseAdHoc):
 
     def expect_attrs(self, obj: Any, required_attrs: Set[str],
                      obj_name: Optional[str] = None) -> None:
+        def enumerate_attrs(attrs: Set[str]) -> str:
+            assert len(attrs) > 0
+            if len(attrs) == 1:
+                [attr] = attrs
+                s = f"attribute `{attr}`.\n"
+            else:
+                s = f"following attribute(s):\n"
+                for attr in attrs:
+                    s += f"- `{attr}`\n"
+            return s
+
         if obj_name is None:
             obj_name = f"`{self.varname}`"
 
@@ -69,23 +80,11 @@ class CasePipeline(CaseAdHoc):
 
         if len(missing) > 0:
             self.print(f"{obj_name} is unexpectedly missing the ", end="")
-            if len(missing) == 1:
-                [attr] = missing
-                self.print(f"attribute `{attr}`.")
-            else:
-                self.print(f"following attribute(s):")
-                for attr in missing:
-                    self.print(f"- `{attr}`")
+            self.print(enumerate_attrs(missing), end="")
 
         if len(extra) > 0:
             self.print(f"{obj_name} unexpectedly has the ", end="")
-            if len(extra) == 1:
-                [attr] = extra
-                self.print(f"attribute `{attr}`.")
-            else:
-                self.print(f"following attribute(s):")
-                for attr in extra:
-                    self.print(f"- `{attr}`")
+            self.print(enumerate_attrs(extra), end="")
 
         raise EarlyReturn
 
