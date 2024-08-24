@@ -14,6 +14,16 @@ import os
 
 # TODO: would be nice to be able to check all expected attributes in one sweep and present all errors to student, rather than one-by-one (good compilers will do this, it is nice)
 
+def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: # -> (extra, missing)
+    attrs: Set[str]
+    try:
+        attrs = set(obj.__dict__.keys())
+    except AttributeError:
+        attrs = set()
+    extra = attrs.difference(required)
+    missing = required.difference(attrs)
+    return extra, missing
+
 def get_attribute(obj: Any, attr: str, msg: str) -> Any:
     try:
         thing = getattr(obj, attr)

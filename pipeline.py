@@ -5,7 +5,7 @@ from util import *
 import io_trace
 
 from io import StringIO
-from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, cast
+from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, Set, cast
 
 class EarlyReturn(Exception):
     pass
@@ -54,6 +54,40 @@ class CasePipeline(CaseAdHoc):
         if joy and self.passed:
             self.print("All steps completed successfully.")
         self.in_code = False
+
+    def expect_attrs(self, obj: Any, required_attrs: Set[str],
+                     obj_name: Optional[str] = None) -> None:
+        if obj_name is None:
+            obj_name = f"`{self.varname}`"
+
+        extra, missing = cmp_attributes(obj, required_attrs)
+
+        if self.expect(len(extra) == 0 and len(missing) == 0):
+            return
+
+        self.finish_step_log(joy=False)
+
+        if len(missing) > 0:
+            self.print(f"{obj_name} is unexpectedly missing the ", end="")
+            if len(missing) == 1:
+                [attr] = missing
+                self.print(f"attribute `{attr}`.")
+            else:
+                self.print(f"following attribute(s):")
+                for attr in missing:
+                    self.print(f"- `{attr}`")
+
+        if len(extra) > 0:
+            self.print(f"{obj_name} unexpectedly has the ", end="")
+            if len(extra) == 1:
+                [attr] = extra
+                self.print(f"attribute `{attr}`.")
+            else:
+                self.print(f"following attribute(s):")
+                for attr in extra:
+                    self.print(f"- `{attr}`")
+
+        raise EarlyReturn
 
     def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
              args_test: Optional[Tuple[Any, ...]] = None,
