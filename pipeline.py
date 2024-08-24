@@ -28,6 +28,13 @@ class CasePipeline(CaseAdHoc):
         self.varname = varname
         self.in_code = False
 
+    def run(self) -> None:
+        try:
+            (self.runner)(self)
+        except EarlyReturn:
+            pass
+        self.run_post()
+
     def catch(self, f: Callable[[], Any]) -> Tuple[Any, List[Read | Write]]:
         try:
             return io_trace.capture(f)
