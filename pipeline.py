@@ -109,7 +109,7 @@ class CasePipeline(CaseAdHoc):
         return self.funcall(
             golden_f=lambda: golden_t(*args_golden), test_f=lambda: test_t(*args_test),
             assign_to=varname, expr_override=expr,
-            cmp_ret=lambda e, a: True,
+            cmp_ret=cmp_ret_nop,
             cmp_io=cmp_io, fmt_io=fmt_io,
         )
 
