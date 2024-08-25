@@ -118,7 +118,6 @@ class CasePipeline(CaseAdHoc):
                args: Tuple[Any, ...] = (),
                args_test: Optional[Tuple[Any, ...]] = None,
                cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
-               fmt_ret: Callable[[Any, Any, bool, str], str] = fmt_ret,
                repr_ret: Callable[[Any], str] = repr,
                describe_ret: str = "Return value",
                cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
@@ -141,7 +140,7 @@ class CasePipeline(CaseAdHoc):
             args=(golden, *args_golden),
             args_test=(test, *args_test),
             expr_override=expr,
-            cmp_ret=cmp_ret, fmt_ret=fmt_ret, repr_ret=repr_ret, describe_ret=describe_ret,
+            cmp_ret=cmp_ret, repr_ret=repr_ret, describe_ret=describe_ret,
             cmp_io=cmp_io, fmt_io=fmt_io,
             assign_to=assign_to,
         )
@@ -151,7 +150,6 @@ class CasePipeline(CaseAdHoc):
                 args: Tuple[Any, ...] = (),
                 args_test: Optional[Tuple[Any, ...]] = None,
                 cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
-                fmt_ret: Callable[[Any, Any, bool, str], str] = fmt_ret,
                 repr_ret: Callable[[Any], str] = repr,
                 describe_ret: str = "Return value",
                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
@@ -177,7 +175,7 @@ class CasePipeline(CaseAdHoc):
             self.print(repr_ret(ret))
         if not self.expect(cmp_ret(ret_expect, ret)):
             self.finish_step_log(joy=False)
-            self.print(fmt_ret(ret_expect, ret, False, describe_ret), end="")
+            self.print(fmt_ret_s(repr(ret_expect), repr_ret(ret), False, describe_ret), end="")
             raise EarlyReturn
         if not self.expect(cmp_io(io_expect, io)):
             self.finish_step_log(joy=False)

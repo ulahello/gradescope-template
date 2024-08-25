@@ -130,13 +130,16 @@ def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
     op_eq = lambda e, a: type(e) == type(a) and e.val == a.val
     return cmp_ret_seq(op_eq)(expect, actual)
 
-def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
+def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
     output: str = f"{prefix}: "
     if eq:
-        output += f"got `{repr(actual)}` as expected.\n"
+        output += f"got `{actual}` as expected.\n"
     else:
-        output += f"expected `{repr(expect)}`, but got `{repr(actual)}`.\n"
+        output += f"expected `{expect}`, but got `{actual}`.\n"
     return output
+
+def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
+    return fmt_ret_s(repr(expect), repr(actual), eq, prefix)
 
 def fmt_io_equ(expect: List[Read | Write],
                actual: List[Read | Write],
