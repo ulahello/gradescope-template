@@ -170,12 +170,14 @@ class CasePipeline(CaseAdHoc):
             args_test = args
         ret_expect, io_expect = io_trace.capture(lambda: golden_f(*args_golden))
         ret, io = self.catch(lambda: test_f(*args_test))
+        ret_string, _ = self.catch(lambda: repr_ret(ret))
+        eq, _ = self.catch(lambda: cmp_ret(ret_expect, ret))
         self.print(fmt_io_verbatim(io), end="")
         if assign_to is None and ret is not None:
-            self.print(repr_ret(ret))
-        if not self.expect(cmp_ret(ret_expect, ret)):
+            self.print(ret_string)
+        if not self.expect(eq):
             self.finish_step_log(joy=False)
-            self.print(fmt_ret_s(repr(ret_expect), repr_ret(ret), False, describe_ret), end="")
+            self.print(fmt_ret_s(repr(ret_expect), ret_string, False, describe_ret), end="")
             raise EarlyReturn
         if not self.expect(cmp_io(io_expect, io)):
             self.finish_step_log(joy=False)
