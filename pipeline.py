@@ -10,6 +10,8 @@ from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, Set, cas
 class EarlyReturn(Exception):
     pass
 
+# TODO: allow overriding args expression
+
 class CasePipeline(CaseAdHoc):
     GoldenObj = TypeVar("GoldenObj")
     TestObj = TypeVar("TestObj")
