@@ -70,7 +70,7 @@ class CasePipeline(CaseAdHoc):
                 [attr] = attrs
                 s = f"attribute `{attr}`.\n"
             else:
-                s = f"following attribute(s):\n"
+                s = f"following attributes:\n"
                 for attr in attrs:
                     s += f"- `{attr}`\n"
             return s
