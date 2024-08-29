@@ -35,6 +35,7 @@ class CasePipeline(CaseAdHoc):
             (self.runner)(self)
         except EarlyReturn:
             pass
+        self.finish_step_log(joy=False)
         self.run_post()
 
     def catch(self, f: Callable[[], Any]) -> Tuple[Any, List[Read | Write]]:
