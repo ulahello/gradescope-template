@@ -1,4 +1,4 @@
-from core import Case, AutograderError
+from core import Case, AutograderError, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write
 from util import *
 import io_trace
@@ -267,7 +267,7 @@ class CaseCheckRecursive(Case):
         self.source_names = source_names
         self.sources = []
         for path in self.source_names:
-            with open(f"submission/{path}", "r") as f:
+            with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
                 src: str = f.read()
                 self.sources.append(src)
 
