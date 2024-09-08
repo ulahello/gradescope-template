@@ -2,11 +2,11 @@
 set -e
 
 if [ "${1}" = "-h" -o "${1}" = "--help" ]; then
-	echo "Usage: ${0} <TEMPLATE_DIR> <DST>"
+	echo "Usage: ${0} <SCRIPT_DIR> <DST>"
 	echo
-	echo "This script zips up relevant files from the script/template"
-	echo "directory TEMPLATE_DIR into a Gradescope compliant zip file,"
-	echo "which will then be deposited to DST."
+	echo "This script zips up relevant files from the script directory"
+	echo "SCRIPT_DIR into a Gradescope compliant zip file, which will"
+	echo "then be deposited to DST."
 	exit 0
 fi
 
@@ -15,12 +15,12 @@ if [ "${#}" -ne 2 ]; then
 	exit 1
 fi
 
-TEMPLATE_DIR="${1}"
+SCRIPT_DIR="${1}"
 DST="${2}"
 
-SOURCES="`cat "${TEMPLATE_DIR}/SOURCES" || true`"
+SOURCES="`cat "${SCRIPT_DIR}/SOURCES" || true`"
 
-cd "${TEMPLATE_DIR}"
+cd "${SCRIPT_DIR}"
 
 rm -vf autograder.zip zip_*.zip
 
@@ -48,4 +48,4 @@ printf '%s\n' "${SOURCES}" | while read source; do
 done
 
 cd -
-mv -v "${TEMPLATE_DIR}/${ZIP}" "${DST}" || true
+mv -v "${SCRIPT_DIR}/${ZIP}" "${DST}" || true
