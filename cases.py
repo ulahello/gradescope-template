@@ -1,3 +1,4 @@
+from ast_analyze import *
 from core import Case, AutograderError, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write
 from util import *
@@ -245,8 +246,80 @@ class CaseScript(CaseIOBase):
 
         self.run_post()
 
-# TODO: doesn't consider how import statements change items in scope (eg. doesn't understand `import module as mod; mod.func()`)
-# NOTE: doesn't look at methods
+# TODO: show exactly where the bad thing was found (ast nodes)
+class CaseCheckAst(Case):
+    func: Callable[..., Any]
+    func_def_path: str
+    source_names: List[str]
+    sources: List[str]
+    predicate: Callable[[Func, Set[Func]], Optional[bool]]
+    found_root: Optional[bool]
+
+    def __init__(self,
+                 visible: bool,
+                 case_name: str,
+                 predicate: Callable[[Func, Set[Func]], Optional[bool]],
+                 func: Callable[..., Any],
+                 func_def_path: str,
+                 source_names: List[str],
+                 pass_msg: str,
+                 fail_msg: str,
+                 warning: bool = False):
+        super().__init__(visible, name=case_name, warning=warning)
+
+        self.pass_msg = pass_msg
+        self.fail_msg = fail_msg
+
+        self.predicate = predicate
+        self.func = func
+        self.func_def_path = func_def_path
+        self.source_names = source_names
+
+        self.found_root = None
+
+        self.sources = []
+        for path in self.source_names:
+            with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
+                src: str = f.read()
+                self.sources.append(src)
+
+    def check_passed(self) -> None:
+        assert self.has_run
+        (funcs, graph_root) = collect_funcs(self.source_names, self.sources, self.func, self.func_def_path)
+
+        # can't do anything if we can't find the function definition
+        if graph_root is None:
+            self.found_root = False
+            self.passed = False
+            return
+        else:
+            self.found_root = True
+
+        self.passed = True
+        ok = (self.predicate)(graph_root, set())
+        if ok is None:
+            self.warning = True
+        else:
+            assert self.passed is not None, "unreachable"
+            self.passed &= ok
+
+    def run(self) -> None:
+        # nothing to "run". just checks.
+        self.run_post()
+
+    def format_output(self) -> str:
+        assert self.found_root is not None, "unreachable"
+        if not self.found_root:
+            func_name: str = self.func.__name__
+            return f"Could not find the definition of function {func_name}."
+
+        output: str = ""
+        msg = self.pass_msg if self.passed else self.fail_msg
+        output += msg.rstrip() + "\n"
+        if self.warning:
+            output += "(This check is not confident.)\n"
+        return output
+
 class CaseCheckRecursive(Case):
     func: Callable[..., Any]
     func_def_path: str
