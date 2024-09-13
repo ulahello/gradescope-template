@@ -8,7 +8,7 @@ from ast_analyze import *
 from typing import Optional, Set, List, Tuple
 import ast
 
-def forbid_float(root: Optional[Func], seen: Set[Func]) -> Optional[bool]:
+def forbid_float(root: Func, seen: Set[Func]) -> Optional[bool]:
     # TODO: inherently heuristic
 
     FORBIDDEN_MODS: List[str] = [
@@ -69,9 +69,6 @@ def forbid_float(root: Optional[Func], seen: Set[Func]) -> Optional[bool]:
         ("math", "gamma"),
         ("math", "lgamma"),
     ]
-
-    if root is None:
-        return True
 
     # if we've already seen this (in a cyclical call graph),
     # return True to be ignored (not semantically true)
