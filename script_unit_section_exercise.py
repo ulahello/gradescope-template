@@ -4,8 +4,8 @@ from cases import *
 from core import *
 from io_trace import Read, Write
 from pipeline import *
-from recursion import *
 from util import *
+import ast_check
 import io_trace
 
 from typing import Dict, List, Any, Optional, Callable
