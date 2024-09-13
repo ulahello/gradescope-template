@@ -1,8 +1,17 @@
 import sys
 sys.path.append("../")
 
-import recursion
+from ast_analyze import *
+import ast_check
 import test_recursion_ext
+
+from typing import List, Callable, Optional, Any
+
+def check_rec_ast_cycles(source_names: List[str], sources: List[str], func: Callable[..., Any], func_def_path: str) -> Optional[bool]:
+    (funcs, graph_root) = collect_funcs(source_names, sources, func, func_def_path)
+    if graph_root is None:
+        return None
+    return ast_check.check_call_graph_cycle(graph_root, set())
 
 func0 = lambda x: 0
 
@@ -34,11 +43,11 @@ for path in source_names:
     with open(path, "r") as f:
         sources.append(f.read())
 
-assert not recursion.check_rec_ast_cycles(source_names, sources, func0, "test_recursion.py")
-assert not recursion.check_rec_ast_cycles(source_names, sources, func1, "test_recursion.py")
-assert recursion.check_rec_ast_cycles(source_names, sources, func2, "test_recursion.py")
-assert recursion.check_rec_ast_cycles(source_names, sources, func3, "test_recursion.py")
-assert recursion.check_rec_ast_cycles(source_names, sources, func4, "test_recursion.py")
-assert recursion.check_rec_ast_cycles(source_names, sources, func5, "test_recursion.py")
+assert not check_rec_ast_cycles(source_names, sources, func0, "test_recursion.py")
+assert not check_rec_ast_cycles(source_names, sources, func1, "test_recursion.py")
+assert check_rec_ast_cycles(source_names, sources, func2, "test_recursion.py")
+assert check_rec_ast_cycles(source_names, sources, func3, "test_recursion.py")
+assert check_rec_ast_cycles(source_names, sources, func4, "test_recursion.py")
+assert check_rec_ast_cycles(source_names, sources, func5, "test_recursion.py")
 
 print("OK")

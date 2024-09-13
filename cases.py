@@ -2,8 +2,8 @@ from ast_analyze import *
 from core import Case, AutograderError, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write
 from util import *
+import ast_check
 import io_trace
-import recursion
 
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set
 import ast
@@ -320,12 +320,7 @@ class CaseCheckAst(Case):
             output += "(This check is not confident.)\n"
         return output
 
-class CaseCheckRecursive(Case):
-    func: Callable[..., Any]
-    func_def_path: str
-    source_names: List[str]
-    sources: List[str]
-
+class CaseCheckRecursive(CaseCheckAst):
     def __init__(self,
                  visible: bool,
                  func: Callable[..., Any],
@@ -333,40 +328,13 @@ class CaseCheckRecursive(Case):
                  source_names: List[str],
                  case_name: str,
                  warning: bool = False):
-        super().__init__(visible, name=case_name, warning=warning)
-
-        self.func = func
-        self.func_def_path = func_def_path
-        self.source_names = source_names
-        self.sources = []
-        for path in self.source_names:
-            with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
-                src: str = f.read()
-                self.sources.append(src)
-
-    def check_passed(self) -> None:
-        assert self.has_run
-        result: Optional[bool] = recursion.check_rec_ast_cycles(self.source_names, self.sources, self.func, self.func_def_path)
-        if result is None:
-            # recursion checker couldn't reasonably determine whether
-            # there is recursion. so this test case should be taken
-            # lightly.
-            self.warning = True
-            self.passed = False
-        else:
-            self.passed = result
-
-    def run(self) -> None:
-        # nothing to "run". just checks.
-        self.run_post()
-
-    def format_output(self) -> str:
-        output: str = ""
-        if self.passed:
-            output += "Found recursion!\n"
-        else:
-            output += "Did not find recursion!\n"
-        return output
+        super().__init__(visible, case_name=case_name,
+                         predicate=ast_check.check_call_graph_cycle,
+                         func=func, func_def_path=func_def_path,
+                         source_names=source_names,
+                         pass_msg="Found recursion!",
+                         fail_msg="Did not find recursion!",
+                         warning=warning)
 
 def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
     src: str = inspect.getsource(func)

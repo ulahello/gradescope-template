@@ -107,3 +107,14 @@ def forbid_float(root: Optional[Func], seen: Set[Func]) -> Optional[bool]:
             return ok
 
     return True
+
+def check_call_graph_cycle(root: Func, seen: Set[Func]) -> bool:
+    if root in seen:
+        return True
+    seen.add(root)
+
+    for call in root.calls:
+        if check_call_graph_cycle(call, seen):
+            return True
+    return False
+
