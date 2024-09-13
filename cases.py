@@ -336,6 +336,22 @@ class CaseCheckRecursive(CaseCheckAst):
                          fail_msg="Did not find recursion!",
                          warning=warning)
 
+class CaseForbidFloat(CaseCheckAst):
+    def __init__(self,
+                 visible: bool,
+                 func: Callable[..., Any],
+                 func_def_path: str,
+                 source_names: List[str],
+                 case_name: str,
+                 warning: bool = False):
+        super().__init__(visible, case_name=case_name,
+                         predicate=ast_check.forbid_float,
+                         func=func, func_def_path=func_def_path,
+                         source_names=source_names,
+                         pass_msg="Did not find floating point operations, as expected.",
+                         fail_msg="Unexpectedly found floating point operations.",
+                         warning=warning)
+
 def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
     src: str = inspect.getsource(func)
     try:
