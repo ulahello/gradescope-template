@@ -35,8 +35,11 @@ ZIP="`basename "${SCRIPT}" '.py'`"
 ZIP="${ZIP#script_}"
 ZIP="./zip_${ZIP}.zip"
 
+# TODO: maybe i should just merge this into SOURCES
 zip "${ZIP}" setup.sh run_autograder \
-    io_trace.py core.py cases.py recursion.py pipeline.py util.py "${SCRIPT}" \
+    io_trace.py core.py cases.py util.py \
+    ast_analyze.py ast_check.py pipeline.py \
+    "${SCRIPT}" \
     golden.py
 
 # zip up sources
