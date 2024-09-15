@@ -352,6 +352,22 @@ class CaseForbidFloat(CaseCheckAst):
                          fail_msg="Unexpectedly found floating point operations.",
                          warning=warning)
 
+class CaseForbidStrFmt(CaseCheckAst):
+    def __init__(self,
+                 visible: bool,
+                 func: Callable[..., Any],
+                 func_def_path: str,
+                 source_names: List[str],
+                 case_name: str,
+                 warning: bool = False):
+        super().__init__(visible, case_name=case_name,
+                         predicate=ast_check.forbid_str_fmt,
+                         func=func, func_def_path=func_def_path,
+                         source_names=source_names,
+                         pass_msg="Did not find string formatting, as expected.",
+                         fail_msg="Unexpectedly found string formatting.",
+                         warning=warning)
+
 def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
     src: str = inspect.getsource(func)
     try:

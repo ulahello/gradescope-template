@@ -8,6 +8,35 @@ from ast_analyze import *
 from typing import Optional, Set, List, Tuple
 import ast
 
+def forbid_str_fmt(root: Func, seen: Set[Func]) -> Optional[bool]:
+    if root in seen:
+        return True
+    seen.add(root)
+
+    FORBIDDEN_FUNCS: List[Tuple[Optional[str], str]] = [
+        (None, "str"),
+        (None, "repr"),
+    ]
+
+    # check this function
+    for node in ast.walk(root.top_node):
+        if isinstance(node, ast.Constant):
+            for bad in [str]:
+                if isinstance(node.value, bad):
+                    return False
+
+        if isinstance(node, ast.Call):
+            if check_call_eq(FORBIDDEN_FUNCS, node) == True:
+                return False
+
+    # recursively check called functions
+    for called in root.calls:
+        ok = forbid_str_fmt(called, seen)
+        if ok != True:
+            return ok
+
+    return True
+
 def forbid_float(root: Func, seen: Set[Func]) -> Optional[bool]:
     # TODO: inherently heuristic
 
