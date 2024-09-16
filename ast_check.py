@@ -1,8 +1,6 @@
 """Use analyzed AST info from ast_analyze to make decisions about submissions.
 See `cases.CaseCheckAst`."""
 
-# TODO: string formatting checking
-
 from ast_analyze import *
 
 from typing import Optional, Set, List, Tuple
