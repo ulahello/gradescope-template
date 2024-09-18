@@ -43,11 +43,13 @@ for path in source_names:
     with open(path, "r") as f:
         sources.append(f.read())
 
-assert not check_rec_ast_cycles(source_names, sources, func0, "test_recursion.py")
-assert not check_rec_ast_cycles(source_names, sources, func1, "test_recursion.py")
-assert check_rec_ast_cycles(source_names, sources, func2, "test_recursion.py")
-assert check_rec_ast_cycles(source_names, sources, func3, "test_recursion.py")
-assert check_rec_ast_cycles(source_names, sources, func4, "test_recursion.py")
-assert check_rec_ast_cycles(source_names, sources, func5, "test_recursion.py")
+
+# TODO: fails, should pick up lambda def
+assert check_rec_ast_cycles(source_names, sources, func0, "test_recursion.py") == False
+assert check_rec_ast_cycles(source_names, sources, func1, "test_recursion.py") == False
+assert check_rec_ast_cycles(source_names, sources, func2, "test_recursion.py") == True
+assert check_rec_ast_cycles(source_names, sources, func3, "test_recursion.py") == True
+assert check_rec_ast_cycles(source_names, sources, func4, "test_recursion.py") == True
+assert check_rec_ast_cycles(source_names, sources, func5, "test_recursion.py") == True
 
 print("OK")
