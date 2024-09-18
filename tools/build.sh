@@ -17,13 +17,9 @@ fi
 
 SCRIPT_DIR="${1}"
 DST="${2}"
-
 SOURCES="`cat "${SCRIPT_DIR}/SOURCES" || true`"
 
 cd "${SCRIPT_DIR}"
-
-rm -vf autograder.zip zip_*.zip
-
 SCRIPT="`find . -name 'script_*.py' -type f | head -n 1`"
 if [ "${SCRIPT}" = "" ]; then
 	echo "${0}: Can't find an entry point! Does 'script_*.py' exist?"
@@ -36,6 +32,7 @@ ZIP="${ZIP#script_}"
 ZIP="./zip_${ZIP}.zip"
 
 # TODO: maybe i should just merge this into SOURCES
+rm -vf autograder.zip zip_*.zip
 zip "${ZIP}" setup.sh run_autograder \
     io_trace.py core.py cases.py util.py \
     ast_analyze.py ast_check.py pipeline.py \
