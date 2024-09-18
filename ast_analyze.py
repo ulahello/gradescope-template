@@ -168,6 +168,7 @@ def collect_funcs(source_names: Iterable[str], sources: Iterable[str], func: Cal
     graph_root: Optional[Func] = None
     for test_func in funcs:
         if test_func.parent_def == func_def_path:
+            # TODO: doesn't consider functions defined as lambdas (eg. `inc = lambda x: x + 1`)
             if test_func.name == func.__code__.co_name:
                 # found it!
                 graph_root = test_func
