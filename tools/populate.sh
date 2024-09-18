@@ -42,7 +42,7 @@ fi
 cd "${DST}"
 printf '%s\n' "${SOURCES}" | while read source; do
 	if [ "${source}" != '' ]; then
-		cp -vr --update=none "${source}" "${DST}"
+		cp -vrn "${source}" "${DST}"
 	fi
 done
 cd -

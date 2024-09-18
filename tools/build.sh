@@ -42,7 +42,7 @@ zip "${ZIP}" setup.sh run_autograder \
 # zip up sources
 printf '%s\n' "${SOURCES}" | while read source; do
 	if [ "${source}" != '' ]; then
-		cp -vr --update=none "${source}" "${DST}"
+		cp -vrn "${source}" "${DST}"
 		zip "${ZIP}" "`basename "${source}"`"
 	fi
 done
