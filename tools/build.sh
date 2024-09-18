@@ -17,35 +17,42 @@ fi
 
 SCRIPT_DIR="${1}"
 DST="${2}"
+
 SOURCES="`cat "${SCRIPT_DIR}/SOURCES" || true`"
 
-cd "${SCRIPT_DIR}"
-SCRIPT="`find . -name 'script_*.py' -type f | head -n 1`"
+SCRIPT="`find "${SCRIPT_DIR}" -name 'script_*.py' -type f | head -n 1`"
 if [ "${SCRIPT}" = "" ]; then
 	echo "${0}: Can't find an entry point! Does 'script_*.py' exist?"
 	exit 1
 fi
 
 # ./script_unit_section_exercise.py -> ./zip_unit_section_exercise.zip
-ZIP="`basename "${SCRIPT}" '.py'`"
-ZIP="${ZIP#script_}"
-ZIP="./zip_${ZIP}.zip"
+ZIP_NAME="`basename "${SCRIPT}" '.py'`"
+ZIP_NAME="${ZIP_NAME#script_}"
+ZIP_NAME="zip_${ZIP_NAME}.zip"
+ZIP="${SCRIPT_DIR}/${ZIP_NAME}"
 
+# remove old zip file
+find "${DST}" -maxdepth 1 -name 'zip_*.zip' -delete
+
+# add new zip file
 # TODO: maybe i should just merge this into SOURCES
-rm -vf autograder.zip zip_*.zip
-zip "${ZIP}" setup.sh run_autograder \
+cd "${SCRIPT_DIR}"
+zip "${ZIP_NAME}" setup.sh run_autograder \
     io_trace.py core.py cases.py util.py \
     ast_analyze.py ast_check.py pipeline.py \
-    "${SCRIPT}" \
+    "`basename ${SCRIPT}`" \
     golden.py
+cd -
 
 # zip up sources
 printf '%s\n' "${SOURCES}" | while read source; do
 	if [ "${source}" != '' ]; then
-		cp -vrn "${source}" "${DST}"
-		zip "${ZIP}" "`basename "${source}"`"
+		cd "${SCRIPT_DIR}"
+		cp -vrn "${source}" .
+		zip "${ZIP_NAME}" "`basename "${source}"`"
+		cd -
 	fi
 done
 
-cd -
-mv -v "${SCRIPT_DIR}/${ZIP}" "${DST}" || true
+mv -v "${ZIP}" "${DST}" || true
