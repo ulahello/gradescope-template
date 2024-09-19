@@ -31,7 +31,7 @@ git clean -fdx
 cd -
 
 # copy template to destination
-cp -r --update=none "${TEMPLATE}/"* "${DST}"
+cp -rn "${TEMPLATE}/"* "${DST}"
 # the script was probably renamed according to the naming convention,
 # so we want to delete the version from the template.
 if [ "`find "${DST}" -name "script_*.py" -type f | wc -l`" -gt 1 ]; then
