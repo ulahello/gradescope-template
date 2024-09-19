@@ -11,13 +11,24 @@ import ast
 
 class Func:
     name: str
-    parent_def: "Func | str" # str represents module name where defined
+    source_path: str
+    parent_def: "Func | str" # str represents module path where defined
     calls: List["Func"]
     top_node: ast.AST
     todo_body: Optional[List[ast.AST]] # function body, awaiting being further parsed. if None, the Func is fully initialized.
 
-    def __init__(self, name: str, parent_def: "Func | str", top_node: ast.AST, body: List[ast.AST]) -> None:
+    def __init__(self, name: str, parent_def: "Func | str",
+                 top_node: ast.AST, body: List[ast.AST]) -> None:
+        source_path: str
+        if isinstance(parent_def, Func):
+            source_path = parent_def.source_path
+        elif isinstance(parent_def, str):
+            source_path = parent_def
+        else:
+            assert False, "unreachable"
+
         self.name = name
+        self.source_path = source_path
         self.parent_def = parent_def
         self.calls = []
         self.top_node = top_node
@@ -86,11 +97,11 @@ def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
 
     return calls
 
-def _collect_funcs_shallow(mod_name: str, mod_src: str) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
+def _collect_funcs_shallow(mod_path: str, mod_src: str) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
     mod_ast: ast.AST = ast.parse(mod_src)
     assert isinstance(mod_ast, ast.Module), "probably unreachable but please notify me if hit"
     funcs: List[Func] = []
-    funcs.extend(_collect_defs_shallow(mod_name, mod_ast.body))
+    funcs.extend(_collect_defs_shallow(mod_path, mod_ast.body))
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
 
     found_uninit: bool = True
@@ -142,7 +153,7 @@ def _collect_funcs_shallow(mod_name: str, mod_src: str) -> Tuple[List[Func], Lis
     return (funcs, todo_resolve)
 
 def _resolve_unresolved(funcs: List[Func],
-                       todo_resolve: List[Tuple[Func, Optional[str], str]]) -> None:
+                        todo_resolve: List[Tuple[Func, Optional[str], str]]) -> None:
     while len(todo_resolve) > 0:
         func, mod, name = todo_resolve.pop()
         for test_func in funcs:
@@ -151,12 +162,12 @@ def _resolve_unresolved(funcs: List[Func],
                 func.calls.append(test_func)
                 break
 
-def collect_funcs(source_names: Iterable[str], sources: Iterable[str], func: Callable[..., Any], func_def_path: str) -> Tuple[List[Func], Optional[Func]]:
+def collect_funcs(source_paths: Iterable[str], sources: Iterable[str], func: Callable[..., Any], func_def_path: str) -> Tuple[List[Func], Optional[Func]]:
     # collect function call graph for entirety of sources
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
-    for mod_name, mod_src in zip(source_names, sources):
-        f, t = _collect_funcs_shallow(mod_name, mod_src)
+    for mod_path, mod_src in zip(source_paths, sources):
+        f, t = _collect_funcs_shallow(mod_path, mod_src)
         funcs.extend(f)
         todo_resolve.extend(t)
 
@@ -179,15 +190,6 @@ def collect_funcs(source_names: Iterable[str], sources: Iterable[str], func: Cal
 
     return (funcs, graph_root)
 
-def check_mod_item_eq(to_test: Iterable[Tuple[Optional[str], str]],
-                      mod: Optional[str], item: str) -> bool:
-    for test_mod, test_item in to_test:
-        # TODO: consider import statement side effects
-        eq: bool = test_mod == mod and test_item == item
-        if eq:
-            return True
-    return False
-
 def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
     name: Optional[str] = None
     mod: Optional[str] = None
@@ -201,20 +203,24 @@ def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
         assert False, "unreachable"
     return (mod, name)
 
-def check_mod_eq(to_test: Iterable[str],
+def check_mod_item_eq(to_test: Tuple[Optional[str], str],
+                      mod: Optional[str], item: str) -> bool:
+    test_mod, test_item = to_test
+    # TODO: consider import statement side effects
+    eq: bool = test_mod == mod and test_item == item
+    return eq
+
+def check_mod_eq(to_test: str,
                  node: ast.Attribute | ast.Name) -> bool:
     (mod, _) = unpack_attr(node)
-    for test_mod in to_test:
-        if test_mod == mod:
-            return True
-    return False
+    return to_test == mod
 
-def check_var_eq(to_test: Iterable[Tuple[Optional[str], str]],
+def check_var_eq(to_test: Tuple[Optional[str], str],
                  node: ast.Attribute | ast.Name) -> bool:
     (mod, name) = unpack_attr(node)
     return check_mod_item_eq(to_test, mod, name)
 
-def check_call_eq(to_test: Iterable[Tuple[Optional[str], str]],
+def check_call_eq(to_test: Tuple[Optional[str], str],
                   node: ast.Call) -> Optional[bool]:
     if isinstance(node.func, ast.Name) or isinstance(node.func, ast.Attribute):
         return check_var_eq(to_test, node.func)

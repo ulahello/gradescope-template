@@ -1,56 +1,123 @@
 """Use analyzed AST info from ast_analyze to make decisions about submissions.
-See `cases.CaseCheckAst`."""
+See `cases.CaseCheckAst`.
+
+Functions prefixed with "nodep_" or "graphp_" are usable as node and
+graph predicates respectively for CaseCheckAst.
+"""
 
 from ast_analyze import *
 
-from typing import Optional, Set, List, Tuple
+from typing import Optional, Set, List, Tuple, Sequence, Any, Type
 import ast
 
-def forbid_str_fmt(root: Func, seen: Set[Func]) -> Optional[bool]:
-    if root in seen:
-        return True
-    seen.add(root)
+class Cause:
+    fname: str
+    node_cause: ast.AST
+    msg: str
 
-    FORBIDDEN_FUNCS: List[Tuple[Optional[str], str]] = [
-        (None, "str"),
-        (None, "repr"),
-    ]
+    def __init__(self, fname: str, node_cause: ast.AST, msg: str) -> None:
+        self.fname = fname
+        self.node_cause = node_cause
+        assert len(msg.splitlines()) == 1, f"invalid {msg=}, must be one line"
+        self.msg = msg.strip()
 
-    # check this function
-    for node in ast.walk(root.top_node):
-        if isinstance(node, ast.Constant):
-            for bad in [str]:
-                if isinstance(node.value, bad):
-                    return False
+    def __repr__(self) -> str:
+        return f"Error({repr(self.msg)}, node={self.node_cause})"
 
+class Summary:
+    max_to_report: int
+    whys: List[Cause]
+
+    def __init__(self, max_to_report: int = 4) -> None:
+        assert 0 < max_to_report, f"{max_to_report=} must be positive integer"
+        self.max_to_report = max_to_report
+        self.whys = []
+
+    def __len__(self) -> int:
+        return len(self.whys)
+
+    def __repr__(self) -> str:
+        return f"Summary(max={self.max_to_report}, {repr(self.whys)})"
+
+    def is_truncated(self) -> bool:
+        return self.max_to_report < len(self)
+
+    def report(self, why: Cause) -> None:
+        self.whys.append(why)
+
+# TODO: (node predicate approach): nested function definitions are considered executed code because we just ast.walk(top_node)
+
+def forbid_funcalls(summary: Summary, top_node: ast.AST, fname: str,
+                    forbidden_funcs: Sequence[Tuple[Optional[str], str]]) -> None:
+    for node in ast.walk(top_node):
         if isinstance(node, ast.Call):
-            if check_call_eq(FORBIDDEN_FUNCS, node) == True:
-                return False
+            for func in forbidden_funcs:
+                (func_mod, func_name) = func
+                if check_call_eq(func, node) == True:
+                    msg: str = f"the function `{func_name}`"
+                    if func_mod is not None:
+                        msg += f" from the module `{func_mod}`"
+                    msg += "is forbidden"
+                    why = Cause(fname, node, msg)
+                    summary.report(why)
 
-    # recursively check called functions
-    for called in root.calls:
-        ok = forbid_str_fmt(called, seen)
-        if ok != True:
-            return ok
+def forbid_vars(summary: Summary, top_node: ast.AST, fname: str,
+                forbidden_vars: Sequence[Tuple[str, str]]) -> None:
+    for node in ast.walk(top_node):
+        if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
+            for spec in forbidden_vars:
+                (mod_name, var_name) = spec
+                if check_var_eq(spec, node) == True:
+                    msg: str = f"the variable `{var_name}` from the module `{mod_name}` is forbidden"
+                    why = Cause(fname, node, msg)
+                    summary.report(why)
 
-    return True
+def forbid_modules(summary: Summary, top_node: ast.AST, fname: str,
+                   forbidden_mods: Sequence[str]) -> None:
+    for node in ast.walk(top_node):
+        if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
+            for mod_name in forbidden_mods:
+                if check_mod_eq(mod_name, node) == True:
+                    msg: str = f"the module `{mod_name}` is forbidden"
+                    why = Cause(fname, node, msg)
+                    summary.report(why)
 
-def forbid_float(root: Func, seen: Set[Func]) -> Optional[bool]:
+def forbid_literals_of_type(summary: Summary, top_node: ast.AST, fname: str,
+                            forbidden_types: Sequence[Type[Any]]) -> None:
+    for node in ast.walk(top_node):
+        if isinstance(node, ast.Constant):
+            for ty in forbidden_types:
+                if isinstance(node.value, ty):
+                    msg: str = f"`{ty.__name__}` literals are forbidden"
+                    why = Cause(fname, node, msg)
+                    summary.report(why)
+
+def forbid_ops(summary: Summary, top_node: ast.AST, fname: str,
+               forbidden_ops: List[Tuple[Type[ast.AST], str]]) -> None:
+    for node in ast.walk(top_node):
+        if isinstance(node, ast.BinOp):
+            for bad_op, symbol in forbidden_ops:
+                if isinstance(node.op, bad_op):
+                    msg: str = f"`{symbol}` operators are forbidden"
+                    why = Cause(fname, node, msg)
+                    summary.report(why)
+
+def p_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
     # TODO: inherently heuristic
 
-    FORBIDDEN_MODS: List[str] = [
-        "cmath",
-    ]
+    forbid_funcalls(summary, top_node, fname, [
+        (None, "str"),
+        (None, "repr"),
+    ])
 
-    FORBIDDEN_VARS: List[Tuple[str, str]] = [
-        ("math", "pi"),
-        ("math", "e"),
-        ("math", "tau"),
-        ("math", "inf"),
-        ("math", "nan"),
-    ]
+    forbid_literals_of_type(summary, top_node, fname, [
+        str,
+    ])
 
-    FORBIDDEN_FUNCS: List[Tuple[Optional[str], str]] = [
+def p_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
+    # TODO: inherently heuristic
+
+    forbid_funcalls(summary, top_node, fname, [
         (None, "complex"),
         (None, "float"),
 
@@ -95,44 +162,28 @@ def forbid_float(root: Func, seen: Set[Func]) -> Optional[bool]:
         ("math", "erfc"),
         ("math", "gamma"),
         ("math", "lgamma"),
-    ]
+    ])
 
-    # if we've already seen this (in a cyclical call graph),
-    # return True to be ignored (not semantically true)
-    if root in seen:
-        return True
-    seen.add(root)
+    forbid_vars(summary, top_node, fname, [
+        ("math", "pi"),
+        ("math", "e"),
+        ("math", "tau"),
+        ("math", "inf"),
+        ("math", "nan"),
+    ])
 
-    # check this function
-    for node in ast.walk(root.top_node):
-        # binary division operators yield floats
-        if isinstance(node, ast.BinOp):
-            if isinstance(node.op, ast.Div):
-                return False
+    forbid_modules(summary, top_node, fname, [
+        "cmath",
+    ])
 
-        # float literals yield floats
-        if isinstance(node, ast.Constant):
-            for bad in [float, complex]:
-                if isinstance(node.value, bad):
-                    return False
+    forbid_literals_of_type(summary, top_node, fname, [
+        float,
+        complex,
+    ])
 
-        # many functions in `math` yield floats
-        if isinstance(node, ast.Call):
-            if check_call_eq(FORBIDDEN_FUNCS, node) == True:
-                return False
-        if isinstance(node, ast.Name) or isinstance(node, ast.Attribute):
-            if check_var_eq(FORBIDDEN_VARS, node) == True:
-                return False
-            if check_mod_eq(FORBIDDEN_MODS, node) == True:
-                return False
-
-    # recursively check called functions
-    for called in root.calls:
-        ok = forbid_float(called, seen)
-        if ok != True:
-            return ok
-
-    return True
+    forbid_ops(summary, top_node, fname, [
+        (ast.Div, "/"),
+    ])
 
 def check_call_graph_cycle(root: Func, seen: Set[Func]) -> bool:
     if root in seen:
@@ -143,4 +194,3 @@ def check_call_graph_cycle(root: Func, seen: Set[Func]) -> bool:
         if check_call_graph_cycle(call, seen):
             return True
     return False
-
