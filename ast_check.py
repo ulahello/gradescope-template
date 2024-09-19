@@ -7,7 +7,7 @@ graph predicates respectively for CaseCheckAst.
 
 from ast_analyze import *
 
-from typing import Optional, Set, List, Tuple, Sequence, Any, Type
+from typing import Optional, Set, List, Tuple, Iterable, Any, Type
 import ast
 
 class Cause:
@@ -54,42 +54,42 @@ class Summary:
 # TODO: (node predicate approach): nested function definitions are considered executed code because we just ast.walk(top_node)
 
 def forbid_funcalls(summary: Summary, top_node: ast.AST, fname: str,
-                    forbidden_funcs: Sequence[Tuple[Optional[str], str]]) -> None:
+                    forbidden_funcs: Iterable[Tuple[Tuple[Optional[str], str], str]]) -> None:
     for node in ast.walk(top_node):
         if isinstance(node, ast.Call):
-            for func in forbidden_funcs:
+            for func, reasoning in forbidden_funcs:
                 (func_mod, func_name) = func
                 if check_call_eq(func, node) == True:
                     msg: str = f"the function `{func_name}`"
                     if func_mod is not None:
                         msg += f" from the module `{func_mod}`"
-                    msg += " is forbidden"
+                    msg += f" {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
 def forbid_vars(summary: Summary, top_node: ast.AST, fname: str,
-                forbidden_vars: Sequence[Tuple[str, str]]) -> None:
+                forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
     for node in ast.walk(top_node):
         if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
-            for spec in forbidden_vars:
+            for spec, reasoning in forbidden_vars:
                 (mod_name, var_name) = spec
                 if check_var_eq(spec, node) == True:
-                    msg: str = f"the variable `{var_name}` from the module `{mod_name}` is forbidden"
+                    msg: str = f"the variable `{var_name}` from the module `{mod_name}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
 def forbid_modules(summary: Summary, top_node: ast.AST, fname: str,
-                   forbidden_mods: Sequence[str]) -> None:
+                   forbidden_mods: Iterable[Tuple[str, str]]) -> None:
     for node in ast.walk(top_node):
         if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
-            for mod_name in forbidden_mods:
+            for mod_name, reasoning in forbidden_mods:
                 if check_mod_eq(mod_name, node) == True:
-                    msg: str = f"the module `{mod_name}` is forbidden"
+                    msg: str = f"the module `{mod_name}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
 def forbid_literals_of_type(summary: Summary, top_node: ast.AST, fname: str,
-                            forbidden_types: Sequence[Type[Any]]) -> None:
+                            forbidden_types: Iterable[Type[Any]]) -> None:
     for node in ast.walk(top_node):
         if isinstance(node, ast.Constant):
             for ty in forbidden_types:
@@ -99,12 +99,12 @@ def forbid_literals_of_type(summary: Summary, top_node: ast.AST, fname: str,
                     summary.report(why)
 
 def forbid_ops(summary: Summary, top_node: ast.AST, fname: str,
-               forbidden_ops: List[Tuple[Type[ast.AST], str]]) -> None:
+               forbidden_ops: List[Tuple[Tuple[Type[ast.AST], str], str]]) -> None:
     for node in ast.walk(top_node):
         if isinstance(node, ast.BinOp):
-            for bad_op, symbol in forbidden_ops:
+            for (bad_op, symbol), reasoning in forbidden_ops:
                 if isinstance(node.op, bad_op):
-                    msg: str = f"`{symbol}` operators are forbidden"
+                    msg: str = f"the `{symbol}` operator {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
@@ -112,8 +112,8 @@ def p_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, top_node, fname, [
-        (None, "str"),
-        (None, "repr"),
+        ((None, "str"), "returns a string"),
+        ((None, "repr"), "returns a string"),
     ])
 
     forbid_literals_of_type(summary, top_node, fname, [
@@ -124,62 +124,67 @@ def p_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, top_node, fname, [
-        (None, "complex"),
-        (None, "float"),
-
-        # functions in `math`
-        ("math", "fabs"),
-        ("math", "fmod"),
-        ("math", "frexp"),
-        ("math", "fsum"),
-        ("math", "ldexp"),
-        ("math", "modf"),
-        ("math", "nextafter"),
-        ("math", "remainder"),
-        ("math", "ulp"),
-        ("math", "cbrt"),
-        ("math", "exp"),
-        ("math", "exp2"),
-        ("math", "expm1"),
-        ("math", "log"),
-        ("math", "log1p"),
-        ("math", "log2"),
-        ("math", "log10"),
-        ("math", "pow"),
-        ("math", "sqrt"),
-        ("math", "acos"),
-        ("math", "asin"),
-        ("math", "atan"),
-        ("math", "atan2"),
-        ("math", "cos"),
-        ("math", "dist"),
-        ("math", "hypot"),
-        ("math", "sin"),
-        ("math", "tan"),
-        ("math", "degrees"),
-        ("math", "radians"),
-        ("math", "acosh"),
-        ("math", "asinh"),
-        ("math", "atanh"),
-        ("math", "cosh"),
-        ("math", "sinh"),
-        ("math", "tanh"),
-        ("math", "erf"),
-        ("math", "erfc"),
-        ("math", "gamma"),
-        ("math", "lgamma"),
+        ((None, "complex"), "returns a complex number, which in Python consists of two floats"),
+        ((None, "float"), "returns a float"),
     ])
+    forbid_funcalls(
+        summary, top_node, fname,
+        map(lambda spec: (spec, "returns a float"), [
+            # functions in `math`
+            ("math", "fabs"),
+            ("math", "fmod"),
+            ("math", "frexp"),
+            ("math", "fsum"),
+            ("math", "ldexp"),
+            ("math", "modf"),
+            ("math", "nextafter"),
+            ("math", "remainder"),
+            ("math", "ulp"),
+            ("math", "cbrt"),
+            ("math", "exp"),
+            ("math", "exp2"),
+            ("math", "expm1"),
+            ("math", "log"),
+            ("math", "log1p"),
+            ("math", "log2"),
+            ("math", "log10"),
+            ("math", "pow"),
+            ("math", "sqrt"),
+            ("math", "acos"),
+            ("math", "asin"),
+            ("math", "atan"),
+            ("math", "atan2"),
+            ("math", "cos"),
+            ("math", "dist"),
+            ("math", "hypot"),
+            ("math", "sin"),
+            ("math", "tan"),
+            ("math", "degrees"),
+            ("math", "radians"),
+            ("math", "acosh"),
+            ("math", "asinh"),
+            ("math", "atanh"),
+            ("math", "cosh"),
+            ("math", "sinh"),
+            ("math", "tanh"),
+            ("math", "erf"),
+            ("math", "erfc"),
+            ("math", "gamma"),
+            ("math", "lgamma"),
+        ])
+    )
 
-    forbid_vars(summary, top_node, fname, [
-        ("math", "pi"),
-        ("math", "e"),
-        ("math", "tau"),
-        ("math", "inf"),
-        ("math", "nan"),
-    ])
+    forbid_vars(summary, top_node, fname,
+                map(lambda spec: (spec, "is a float"), [
+                    ("math", "pi"),
+                    ("math", "e"),
+                    ("math", "tau"),
+                    ("math", "inf"),
+                    ("math", "nan"),
+                ]))
 
     forbid_modules(summary, top_node, fname, [
-        "cmath",
+        ("cmath", "works with complex numbers, which in Python consist of two floats"),
     ])
 
     forbid_literals_of_type(summary, top_node, fname, [
@@ -188,7 +193,7 @@ def p_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
     ])
 
     forbid_ops(summary, top_node, fname, [
-        (ast.Div, "/"),
+        ((ast.Div, "/"), "yields a float"),
     ])
 
 def check_call_graph_cycle(root: Func, seen: Set[Func]) -> bool:

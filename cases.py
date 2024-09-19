@@ -343,9 +343,13 @@ class CaseCheckAst(Case):
         output += status.rstrip() + "\n"
         if self.warning:
             output += "(This check is not confident.)\n"
-        output += "\n"
 
         # okay, but *why* ??
+        if len(self.summary):
+            output += "\n"
+            output += "Reasoning:\n"
+            output += "\n"
+
         for why in self.summary.whys():
             fname: str = why.fname
             msg: str = why.msg
