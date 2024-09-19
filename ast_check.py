@@ -63,7 +63,7 @@ def forbid_funcalls(summary: Summary, top_node: ast.AST, fname: str,
                     msg: str = f"the function `{func_name}`"
                     if func_mod is not None:
                         msg += f" from the module `{func_mod}`"
-                    msg += "is forbidden"
+                    msg += " is forbidden"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
