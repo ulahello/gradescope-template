@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -e
 
+# TODO: if i wrote this in python, it would be more reasonably portable. see standard `zipfile` module
+
 if [ "${1}" = "-h" -o "${1}" = "--help" ]; then
 	echo "Usage: ${0} <SCRIPT_DIR> <DST>"
 	echo
