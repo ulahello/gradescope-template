@@ -108,7 +108,7 @@ def forbid_ops(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def p_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
+def nodep_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, top_node, fname, [
@@ -120,7 +120,7 @@ def p_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
         str,
     ])
 
-def p_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
+def nodep_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, top_node, fname, [
@@ -196,12 +196,12 @@ def p_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
         ((ast.Div, "/"), "yields a float"),
     ])
 
-def check_call_graph_cycle(root: Func, seen: Set[Func]) -> bool:
+def graphp_check_recursion(root: Func, seen: Set[Func]) -> bool:
     if root in seen:
         return True
     seen.add(root)
 
     for call in root.calls:
-        if check_call_graph_cycle(call, seen):
+        if graphp_check_recursion(call, seen):
             return True
     return False

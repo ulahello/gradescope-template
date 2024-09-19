@@ -370,7 +370,7 @@ class CaseCheckRecursive(CaseCheckAst):
                  case_name: str,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         graph_predicate=ast_check.check_call_graph_cycle,
+                         graph_predicate=ast_check.graphp_check_recursion,
                          node_predicate=None,
                          func=func, func_def_path=func_def_path,
                          source_paths=source_paths,
@@ -387,7 +387,7 @@ class CaseForbidFloat(CaseCheckAst):
                  case_name: str,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         node_predicate=ast_check.p_forbid_float,
+                         node_predicate=ast_check.nodep_forbid_float,
                          graph_predicate=None,
                          func=func, func_def_path=func_def_path,
                          source_paths=source_paths,
@@ -404,7 +404,7 @@ class CaseForbidStrFmt(CaseCheckAst):
                  case_name: str,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         node_predicate=ast_check.p_forbid_str_fmt,
+                         node_predicate=ast_check.nodep_forbid_str_fmt,
                          graph_predicate=None,
                          func=func, func_def_path=func_def_path,
                          source_paths=source_paths,
