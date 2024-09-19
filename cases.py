@@ -347,8 +347,7 @@ class CaseCheckAst(Case):
         # okay, but *why* ??
         if len(self.summary):
             output += "\n"
-            output += "Reasoning:\n"
-            output += "\n"
+            output += "## Reasoning:\n"
 
         for why in self.summary.whys():
             fname: str = why.fname
