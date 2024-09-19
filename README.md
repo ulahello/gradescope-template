@@ -2,9 +2,12 @@
 
 This README is under construction!
 
-## What is the shape of this system?
+## TODOs
 
-TODO: add some example scripts to make this clearer
+- TODO: document CHECKOUT and SOURCES, more broadly the build infrastructure
+- TODO: add some example scripts because walls of text aren't always useful
+
+## What is the shape of this system?
 
 This template closely follows the shape of the [Gradescope API specification](https://gradescope-autograders.readthedocs.io/en/latest/specs/).
 I strongly recommend reading this, and maybe even playing around with it to get a feel for how it works.
