@@ -346,7 +346,7 @@ class CaseCheckAst(Case):
         output += "\n"
 
         # okay, but *why* ??
-        for why in self.summary.whys:
+        for why in self.summary.whys():
             assert isinstance(why.node_cause, ast.expr), "FIXME: is this unreachable?"
             fname: str = why.fname
             line: int = why.node_cause.lineno

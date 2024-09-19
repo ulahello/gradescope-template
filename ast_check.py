@@ -26,24 +26,30 @@ class Cause:
 
 class Summary:
     max_to_report: int
-    whys: List[Cause]
+    _whys: List[Cause]
 
     def __init__(self, max_to_report: int = 4) -> None:
         assert 0 < max_to_report, f"{max_to_report=} must be positive integer"
         self.max_to_report = max_to_report
-        self.whys = []
+        self._whys = []
 
     def __len__(self) -> int:
-        return len(self.whys)
+        return len(self._whys)
 
     def __repr__(self) -> str:
-        return f"Summary(max={self.max_to_report}, {repr(self.whys)})"
+        return f"Summary(max={self.max_to_report}, {repr(self._whys)})"
+
+    def unreported(self) -> int:
+        return max(0, len(self) - self.max_to_report)
 
     def is_truncated(self) -> bool:
-        return self.max_to_report < len(self)
+        return 0 < self.unreported()
 
     def report(self, why: Cause) -> None:
-        self.whys.append(why)
+        self._whys.append(why)
+
+    def whys(self) -> List[Cause]:
+        return self._whys[:self.max_to_report]
 
 # TODO: (node predicate approach): nested function definitions are considered executed code because we just ast.walk(top_node)
 
