@@ -347,11 +347,14 @@ class CaseCheckAst(Case):
 
         # okay, but *why* ??
         for why in self.summary.whys():
-            assert isinstance(why.node_cause, ast.expr), "FIXME: is this unreachable?"
             fname: str = why.fname
-            line: int = why.node_cause.lineno
             msg: str = why.msg
-            output += f"Line {line} of '{fname}': {msg}\n"
+            if isinstance(why.node_cause, ast.expr):
+                line: int = why.node_cause.lineno
+                output += f"- Line {line} of '{fname}': {msg}\n"
+            else:
+                # TODO: is/should this be this unreachable?
+                output += f"- In file '{fname}': {msg}\n"
 
         return output
 
