@@ -82,8 +82,7 @@ def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
                 calls.add((None, node.func.id))
             elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
                 calls.add((node.func.value.id, node.func.attr))
-        else:
-            calls |= _collect_calls(ast.iter_child_nodes(node))
+        calls |= _collect_calls(ast.iter_child_nodes(node))
 
     return calls
 
