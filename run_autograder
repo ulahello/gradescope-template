@@ -7,4 +7,10 @@ if [ "${SCRIPT}" = "" ]; then
 	echo "${0}: Can't find an entry point! Does 'script_*.py' exist?"
 	exit 1
 fi
+
+# see <https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED>.
+# disables hash randomization in the standard library, which should help make scripts more deterministic.
+export PYTHONHASHSEED=0
+
+# start the autograder script
 python3 "${SCRIPT}"
