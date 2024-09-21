@@ -37,7 +37,12 @@ The zip file must contain the following:
 2. `run_autograder`
 3. Source code for the autograding script (probably `*.py`)
 
-The [`build.sh`](./tools/build.sh) script creates a conformant ZIP file, but only works on unix-like systems.
+The [`build.py`](./tools/build.py) script is cross-platform and creates a conformant ZIP file.
+Run it by invoking Python:
+
+```console
+$ python3 tools/build.py --help
+```
 
 ## License
 
