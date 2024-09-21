@@ -59,13 +59,21 @@ def build(script_dir: str, dst: str) -> None:
 
     # construct zip file
     with ZipFile(zip_path, mode="w") as zipfile:
-        # add hardcoded sources
+        # add sources from script_dir
+        script_dir_sources = [
+            "setup.sh",
+            "run_autograder",
+        ]
         for entry in os.scandir(script_dir):
             if entry.name.endswith(".py") and entry.is_file():
-                with open(entry.path, "r") as f:
-                    file_data = f.read()
-                zipfile.writestr(entry.name, file_data)
-                info(f"added source '{entry.name}'")
+                script_dir_sources.append(entry.name)
+
+        for name in script_dir_sources:
+            path = PurePath(script_dir, name)
+            with open(path, "r") as f:
+                file_data = f.read()
+            zipfile.writestr(name, file_data)
+            info(f"added source '{name}'")
 
         # add SOURCES. we change the cwd because sources are relative to the script directory.
         old_cwd = os.getcwd()
