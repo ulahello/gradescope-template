@@ -1,5 +1,5 @@
 from pathlib import PurePath
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 import argparse
 import os
 import shutil
@@ -33,7 +33,16 @@ def get_zip_name(script_name: str) -> str:
     new_name: str = "zip_" + script_name.removeprefix("script_")
     return PurePath(script_name).with_name(new_name).with_suffix(".zip").name
 
+def det_zipinfo(filename: str) -> ZipInfo:
+    return ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+
 def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str]) -> None:
+    def add_file_contents(zf: ZipFile, path: PurePath) -> None:
+        with open(path, "r") as f:
+            file_data = f.read()
+        zf.writestr(det_zipinfo(path.name), file_data)
+        info(f"added source '{path.name}'")
+
     # add sources from script_dir
     script_dir_sources = [
         "setup.sh",
@@ -45,20 +54,13 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str]) -> None:
 
     for name in script_dir_sources:
         path = PurePath(script_dir, name)
-        with open(path, "r") as f:
-            file_data = f.read()
-        zf.writestr(name, file_data)
-        info(f"added source '{name}'")
+        add_file_contents(zf, path)
 
     # add SOURCES. we change the cwd because sources are relative to the script directory.
     old_cwd = os.getcwd()
     os.chdir(script_dir)
     for source_path in sources:
-        source_name: str = PurePath(source_path).name
-        with open(source_path, "r") as f:
-            source_data = f.read()
-        zf.writestr(source_name, source_data)
-        info(f"added source '{source_path}'")
+        add_file_contents(zf, PurePath(source_path))
     os.chdir(old_cwd)
 
 assert get_zip_name("script_foo.whatever") == "zip_foo.zip"
