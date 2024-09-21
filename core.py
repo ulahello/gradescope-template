@@ -112,8 +112,6 @@ class Case:
 # Summary of test cases. It is "Good" because nothing went wrong while
 # loading them, eg. the submission can be tested.
 class SummaryGood:
-    execution_time: int
-
     output: str
 
     max_score: float
@@ -125,9 +123,7 @@ class SummaryGood:
     num_scored: int
     num_passed_scored: int
 
-    def __init__(self, tests: List[Dict[str, Any]], max_score: float, execution_time: int) -> None:
-        self.execution_time = execution_time
-
+    def __init__(self, tests: List[Dict[str, Any]], max_score: float) -> None:
         self.output = ""
 
         self.max_score = max_score
@@ -178,7 +174,6 @@ class SummaryGood:
                 "score": self.score,
                 "output": self.output,
                 "output_format": OUTPUT_FORMAT,
-                "execution_time": self.execution_time,
                 "stdout_visibility": "hidden", # hidden so as to not reveal hidden test cases (if they write to stdout)
                 "tests": self.tests,
             }))
@@ -268,12 +263,11 @@ def autograder_main(get_test_cases: Callable[[Dict[str, Any]], List[Case]]) -> N
 
     # set max_score dynamically based on however many points the assignment is worth
     max_score: float = float(metadata["assignment"]["total_points"])
-    EXECUTION_TIME: int = 60
 
     # run the test cases!
     tests: List[Dict[str, Any]] = run_test_cases(cases)
     # how did they go?
-    summary: SummaryGood = SummaryGood(tests, max_score=max_score, execution_time=EXECUTION_TIME)
+    summary: SummaryGood = SummaryGood(tests, max_score=max_score)
 
     # write results to results.json!
     summary.write_to_results()
