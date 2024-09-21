@@ -48,7 +48,7 @@ def build(script_dir: str, dst: str) -> None:
     # get the zip path
     # ex. ./script_unit_section_exercise.py -> ./zip_unit_section_exercise.zip
     zip_name: str = get_zip_name(script_name)
-    zip_path: PurePath = PurePath(script_dir, zip_name)
+    zip_path: PurePath = PurePath(dst, zip_name)
 
     # remove the old zip file
     try:
