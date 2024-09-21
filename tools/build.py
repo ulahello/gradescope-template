@@ -60,22 +60,12 @@ def build(script_dir: str, dst: str) -> None:
     # construct zip file
     with ZipFile(zip_path, mode="w") as zipfile:
         # add hardcoded sources
-        for file_name in [
-                "io_trace.py",
-                "core.py",
-                "cases.py",
-                "util.py",
-                "ast_analyze.py",
-                "ast_check.py",
-                "pipeline.py",
-                "golden.py",
-                script_name,
-        ]:
-            file_path = PurePath(script_dir, file_name)
-            with open(file_path, "r") as f:
-                file_data = f.read()
-            zipfile.writestr(file_name, file_data)
-            info(f"added source '{file_name}'")
+        for entry in os.scandir(script_dir):
+            if entry.name.endswith(".py") and entry.is_file():
+                with open(entry.path, "r") as f:
+                    file_data = f.read()
+                zipfile.writestr(entry.name, file_data)
+                info(f"added source '{entry.name}'")
 
         # add SOURCES. we change the cwd because sources are relative to the script directory.
         old_cwd = os.getcwd()
