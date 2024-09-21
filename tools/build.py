@@ -81,7 +81,7 @@ def build(script_dir: str, dst: str) -> None:
     info(f"successfully built ZIP '{str(zip_path)}'")
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Assemble a Gradescope compliant zip file.")
+    parser = argparse.ArgumentParser(description="Assemble a Gradescope compliant zip file. If not all source files are present, you must run 'populate.py' first.")
     parser.add_argument("SCRIPT_DIR", help="path to script directory where source files reside")
     parser.add_argument("DST", help="path to deposit zip file")
     args = parser.parse_args()
