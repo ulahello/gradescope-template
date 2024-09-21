@@ -88,7 +88,7 @@ def build(script_dir: str, dst: str) -> None:
             info(f"added source '{source_path}'")
         os.chdir(old_cwd)
 
-    info(f"successfully built ZIP at '{zip_path}'")
+    info(f"successfully built ZIP '{str(zip_path)}'")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Assemble a Gradescope compliant zip file.")
