@@ -180,7 +180,7 @@ class CasePipeline(CaseAdHoc):
             self.print(ret_string)
         if not self.expect(eq):
             self.finish_step_log(joy=False)
-            self.print(fmt_ret_s(repr(ret_expect), ret_string, False, describe_ret), end="")
+            self.print(fmt_ret_s(repr_ret(ret_expect), ret_string, False, describe_ret), end="")
             raise EarlyReturn
         if not self.expect(cmp_io(io_expect, io)):
             self.finish_step_log(joy=False)
