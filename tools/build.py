@@ -33,14 +33,17 @@ def get_zip_name(script_name: str) -> str:
     new_name: str = "zip_" + script_name.removeprefix("script_")
     return PurePath(script_name).with_name(new_name).with_suffix(".zip").name
 
-def det_zipinfo(filename: str) -> ZipInfo:
-    return ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+def det_zipinfo(filename: str, algo: int, level: int) -> ZipInfo:
+    info = ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = algo
+    # XXX: can't set compression level? also why do i have to specify algo here if i already do for the whole ZipFile?? maybe i should read the ZIP spec
+    return info
 
-def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str]) -> None:
-    def add_file_contents(zf: ZipFile, path: PurePath) -> None:
+def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, level: int) -> None:
+    def add_file_contents(zf: ZipFile, path: PurePath, algo: int, level: int) -> None:
         with open(path, "r") as f:
             file_data = f.read()
-        zf.writestr(det_zipinfo(path.name), file_data)
+        zf.writestr(det_zipinfo(path.name, algo, level), file_data)
         info(f"added source '{path.name}'")
 
     # add sources from script_dir
@@ -54,13 +57,13 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str]) -> None:
 
     for name in script_dir_sources:
         path = PurePath(script_dir, name)
-        add_file_contents(zf, path)
+        add_file_contents(zf, path, algo, level)
 
     # add SOURCES. we change the cwd because sources are relative to the script directory.
     old_cwd = os.getcwd()
     os.chdir(script_dir)
     for source_path in sources:
-        add_file_contents(zf, PurePath(source_path))
+        add_file_contents(zf, PurePath(source_path), algo, level)
     os.chdir(old_cwd)
 
 assert get_zip_name("script_foo.whatever") == "zip_foo.zip"
@@ -98,7 +101,7 @@ def build(script_dir: str, dst: str) -> None:
         try:
             with ZipFile(zip_path, mode="w",
                          compression=algo, compresslevel=level) as zf:
-                add_to_zip(zf, script_dir, sources)
+                add_to_zip(zf, script_dir, sources, algo, level)
 
             info(f"successfully built ZIP '{str(zip_path)}' ({algo=}, {level=})")
             return
