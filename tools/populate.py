@@ -58,9 +58,6 @@ def copy_no_clobber(src: str, dst: str) -> None:
         info(f"skipping '{src}' (already exists)")
 
 def populate(template_path: str, dst: str) -> None:
-    # parse SOURCES
-    sources: List[str] = read_sources(dst)
-
     # read CHECKOUT
     checkout: str = read_checkout(dst)
 
@@ -89,6 +86,9 @@ def populate(template_path: str, dst: str) -> None:
                 info(f"removing '{str(to_remove)}'")
                 os.remove(to_remove)
                 break
+
+    # parse SOURCES
+    sources: List[str] = read_sources(dst)
 
     # copy SOURCES to destination
     old_cwd = os.getcwd()
