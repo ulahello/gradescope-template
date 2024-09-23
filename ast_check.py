@@ -28,7 +28,7 @@ class Summary:
     max_to_report: int
     _whys: List[Cause]
 
-    def __init__(self, max_to_report: int = 4) -> None:
+    def __init__(self, max_to_report: int) -> None:
         assert 0 < max_to_report, f"{max_to_report=} must be positive integer"
         self.max_to_report = max_to_report
         self._whys = []

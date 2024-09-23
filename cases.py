@@ -249,6 +249,8 @@ class CaseScript(CaseIOBase):
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
 NodePredicate: TypeAlias = Callable[[ast_check.Summary, ast.AST, str], None]
 
+CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
+
 class CaseCheckAst(Case):
     func: Callable[..., Any]
     func_def_path: str
@@ -270,6 +272,7 @@ class CaseCheckAst(Case):
                  source_paths: List[str],
                  pass_msg: str,
                  fail_msg: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, name=case_name, warning=warning)
 
@@ -284,7 +287,7 @@ class CaseCheckAst(Case):
         self.source_paths = source_paths
 
         self.found_root = None
-        self.summary = ast_check.Summary()
+        self.summary = ast_check.Summary(max_diagnostics)
 
         self.sources = []
         for path in self.source_paths:
@@ -368,6 +371,7 @@ class CaseCheckRecursive(CaseCheckAst):
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
                          graph_predicate=ast_check.graphp_check_recursion,
@@ -385,6 +389,7 @@ class CaseForbidFloat(CaseCheckAst):
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
                          node_predicate=ast_check.nodep_forbid_float,
@@ -402,6 +407,7 @@ class CaseForbidStrFmt(CaseCheckAst):
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
                          node_predicate=ast_check.nodep_forbid_str_fmt,
