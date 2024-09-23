@@ -59,7 +59,7 @@ def copy_no_clobber(src: str, dst: str) -> None:
 
 def populate(template_path: str, dst: str) -> None:
     # parse SOURCES
-    sources: List[str] = read_sources(template_path)
+    sources: List[str] = read_sources(dst)
 
     # read CHECKOUT
     checkout: str = read_checkout(dst)
