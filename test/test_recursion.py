@@ -11,7 +11,7 @@ def check_rec_ast_cycles(source_names: List[str], sources: List[str], func: Call
     (funcs, graph_root) = collect_funcs(source_names, sources, func, func_def_path)
     if graph_root is None:
         return None
-    return ast_check.check_call_graph_cycle(graph_root, set())
+    return ast_check.graphp_check_recursion(graph_root, set())
 
 func0 = lambda x: 0
 

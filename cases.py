@@ -5,7 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, TypeAlias
 import ast
 import inspect
 
@@ -246,46 +246,71 @@ class CaseScript(CaseIOBase):
 
         self.run_post()
 
-# TODO: show exactly where the bad thing was found (ast nodes)
+GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
+NodePredicate: TypeAlias = Callable[[ast_check.Summary, ast.AST, str], None]
+
+CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
+
 class CaseCheckAst(Case):
     func: Callable[..., Any]
     func_def_path: str
-    source_names: List[str]
+    source_paths: List[str]
     sources: List[str]
-    predicate: Callable[[Func, Set[Func]], Optional[bool]]
     found_root: Optional[bool]
+
+    graph_predicate: Optional[GraphPredicate]
+    node_predicate: Optional[NodePredicate]
+    summary: ast_check.Summary
 
     def __init__(self,
                  visible: bool,
                  case_name: str,
-                 predicate: Callable[[Func, Set[Func]], Optional[bool]],
+                 graph_predicate: Optional[GraphPredicate],
+                 node_predicate: Optional[NodePredicate],
                  func: Callable[..., Any],
                  func_def_path: str,
-                 source_names: List[str],
+                 source_paths: List[str],
                  pass_msg: str,
                  fail_msg: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, name=case_name, warning=warning)
 
         self.pass_msg = pass_msg
         self.fail_msg = fail_msg
 
-        self.predicate = predicate
+        self.graph_predicate = graph_predicate
+        self.node_predicate = node_predicate
+
         self.func = func
         self.func_def_path = func_def_path
-        self.source_names = source_names
+        self.source_paths = source_paths
 
         self.found_root = None
+        self.summary = ast_check.Summary(max_diagnostics)
 
         self.sources = []
-        for path in self.source_names:
+        for path in self.source_paths:
             with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
                 src: str = f.read()
                 self.sources.append(src)
 
+    def call_node_predicate(self, func: Func, seen: Set[Func]) -> None:
+        if self.node_predicate is None:
+            return
+        if func in seen:
+            return
+        seen.add(func)
+
+        (self.node_predicate)(self.summary, func.top_node, func.source_path)
+
+        for called in func.calls:
+            self.call_node_predicate(called, seen)
+
     def check_passed(self) -> None:
         assert self.has_run
-        (funcs, graph_root) = collect_funcs(self.source_names, self.sources, self.func, self.func_def_path)
+
+        (funcs, graph_root) = collect_funcs(self.source_paths, self.sources, self.func, self.func_def_path)
 
         # can't do anything if we can't find the function definition
         if graph_root is None:
@@ -294,14 +319,16 @@ class CaseCheckAst(Case):
             return
         else:
             self.found_root = True
+            self.passed = True
 
-        self.passed = True
-        ok = (self.predicate)(graph_root, set())
-        if ok is None:
-            self.warning = True
-        else:
-            assert self.passed is not None, "unreachable"
-            self.passed &= ok
+        # call graph predicate
+        if self.graph_predicate is not None:
+            self.passed &= (self.graph_predicate)(graph_root, set())
+
+        # call node predicate on the top level nodes of each called function
+        self.call_node_predicate(graph_root, set())
+
+        self.passed &= len(self.summary) == 0
 
     def run(self) -> None:
         # nothing to "run". just checks.
@@ -313,11 +340,28 @@ class CaseCheckAst(Case):
             func_name: str = self.func.__name__
             return f"Could not find the definition of function {func_name}."
 
+        # show pass/fail status
         output: str = ""
-        msg = self.pass_msg if self.passed else self.fail_msg
-        output += msg.rstrip() + "\n"
+        status = self.pass_msg if self.passed else self.fail_msg
+        output += status.rstrip() + "\n"
         if self.warning:
             output += "(This check is not confident.)\n"
+
+        # okay, but *why* ??
+        if len(self.summary):
+            output += "\n"
+            output += "## Reasoning:\n"
+
+        for why in self.summary.whys():
+            fname: str = why.fname
+            msg: str = why.msg
+            if isinstance(why.node_cause, ast.expr):
+                line: int = why.node_cause.lineno
+                output += f"- Line {line} of '{fname}': {msg}\n"
+            else:
+                # TODO: is/should this be this unreachable?
+                output += f"- In file '{fname}': {msg}\n"
+
         return output
 
 class CaseCheckRecursive(CaseCheckAst):
@@ -325,13 +369,15 @@ class CaseCheckRecursive(CaseCheckAst):
                  visible: bool,
                  func: Callable[..., Any],
                  func_def_path: str,
-                 source_names: List[str],
+                 source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         predicate=ast_check.check_call_graph_cycle,
+                         graph_predicate=ast_check.graphp_check_recursion,
+                         node_predicate=None,
                          func=func, func_def_path=func_def_path,
-                         source_names=source_names,
+                         source_paths=source_paths,
                          pass_msg="Found recursion!",
                          fail_msg="Did not find recursion!",
                          warning=warning)
@@ -341,13 +387,15 @@ class CaseForbidFloat(CaseCheckAst):
                  visible: bool,
                  func: Callable[..., Any],
                  func_def_path: str,
-                 source_names: List[str],
+                 source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         predicate=ast_check.forbid_float,
+                         node_predicate=ast_check.nodep_forbid_float,
+                         graph_predicate=None,
                          func=func, func_def_path=func_def_path,
-                         source_names=source_names,
+                         source_paths=source_paths,
                          pass_msg="Did not find floating point operations, as expected.",
                          fail_msg="Unexpectedly found floating point operations.",
                          warning=warning)
@@ -357,13 +405,15 @@ class CaseForbidStrFmt(CaseCheckAst):
                  visible: bool,
                  func: Callable[..., Any],
                  func_def_path: str,
-                 source_names: List[str],
+                 source_paths: List[str],
                  case_name: str,
+                 max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, case_name=case_name,
-                         predicate=ast_check.forbid_str_fmt,
+                         node_predicate=ast_check.nodep_forbid_str_fmt,
+                         graph_predicate=None,
                          func=func, func_def_path=func_def_path,
-                         source_names=source_names,
+                         source_paths=source_paths,
                          pass_msg="Did not find string formatting, as expected.",
                          fail_msg="Unexpectedly found string formatting.",
                          warning=warning)
