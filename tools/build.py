@@ -59,12 +59,8 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, leve
         path = PurePath(script_dir, name)
         add_file_contents(zf, path, algo, level)
 
-    # add SOURCES. we change the cwd because sources are relative to the script directory.
-    old_cwd = os.getcwd()
-    os.chdir(script_dir)
-    for source_path in sources:
-        add_file_contents(zf, PurePath(source_path), algo, level)
-    os.chdir(old_cwd)
+    # we don't add SOURCES, because they should already be copied into
+    # the script directory by populate.sh.
 
 assert get_zip_name("script_foo.whatever") == "zip_foo.zip"
 assert get_zip_name("script_unit_section_exercise.py") == "zip_unit_section_exercise.zip"
