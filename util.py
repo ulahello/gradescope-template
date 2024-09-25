@@ -109,15 +109,20 @@ def cmp_ret_equ(expect: Any, actual: Any) -> bool:
     eq: bool = expect == actual
     return eq
 
+def is_sequence(obj: Any) -> bool:
+    for req in [
+            "__getitem__",
+            "__len__",
+    ]:
+        if not hasattr(obj, req):
+            # it's not a sequence! i am weeping!
+            return False
+    return True
+
 def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any], Sequence[Any]], bool]:
     def inner(expect: Sequence[Any], actual: Sequence[Any]) -> bool:
-        for req in [
-                "__getitem__",
-                "__len__",
-        ]:
-            if not hasattr(actual, req):
-                # it's not a sequence! i am weeping!
-                return False
+        if not is_sequence(actual):
+            return False
         if len(expect) != len(actual):
             return False
         for expect_elem, actual_elem in zip(expect, actual):
@@ -126,6 +131,30 @@ def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any]
         return True
 
     return inner
+
+# works with unhashable types!
+def cmp_ret_seq_unordered(expect: Sequence[Any], actual: Any) -> bool:
+    if not is_sequence(actual):
+        return False
+    if len(expect) != len(actual):
+        return False
+    for expect_item in expect:
+        if not expect_item in actual:
+            return False
+    return True
+
+# works with unhashable types!
+def cmp_ret_seq_freq(expect: Sequence[Any], actual: Any) -> bool:
+    if not is_sequence(actual):
+        return False
+    if len(expect) != len(actual):
+        return False
+    # XXX: love this time complexity for us
+    for expect_item in expect:
+        expect_count = expect.count(expect_item)
+        if not actual.count(expect_item) == expect_count:
+            return False
+    return True
 
 def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
     op_eq = lambda e, a: type(e) == type(a) and e.val == a.val
