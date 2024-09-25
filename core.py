@@ -158,15 +158,32 @@ class SummaryGood:
             if not passed and not visible:
                     hidden_failing = True
 
+        all_passed: bool = self.num_passed_scored == self.num_scored
+        assert self.num_passed_scored <= self.num_scored, "unreachable"
+
+        if all_passed:
+            self.output += "# All tests pass!\n"
+        else:
+            self.output += "# Some tests are failing!\n"
+            if hidden_failing:
+                self.output += "One or more hidden tests are failing.\n"
+
+                # also add a test case that indicates this for extra clarity
+                self.tests.append({
+                    "name": "Hidden tests failing!",
+                    "status": "failed",
+                    "output": "Double-check that your submission is correctly handling all valid inputs.\n",
+                    "output_format": OUTPUT_FORMAT,
+                    "visibility": "visible",
+                })
+
         self.output += f"{self.num_passed_visible}/{self.num_visible} visible test(s) passed.\n"
-        if hidden_failing:
-            self.output += "One or more hidden tests are failing.\n"
 
         # compute score: all or nothing
-        if self.num_passed_scored < self.num_scored:
-            self.score = 0.0
-        else:
+        if all_passed:
             self.score = self.max_score
+        else:
+            self.score = 0.0
 
     def write_to_results(self) -> None:
         with open(WHERE_THE_RESULTS_GO, "w") as f:
