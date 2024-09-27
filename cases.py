@@ -5,7 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, TypeAlias
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, TypeAlias
 import ast
 import inspect
 
@@ -247,7 +247,7 @@ class CaseScript(CaseIOBase):
         self.run_post()
 
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
-NodePredicate: TypeAlias = Callable[[ast_check.Summary, List[ast.AST], str], None]
+NodePredicate: TypeAlias = Callable[[ast_check.Summary, Iterable[ast.AST], str], None]
 
 CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 

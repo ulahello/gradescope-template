@@ -110,7 +110,7 @@ def forbid_ops(summary: Summary, body: Iterable[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def nodep_forbid_str_fmt(summary: Summary, body: List[ast.AST], fname: str) -> None:
+def nodep_forbid_str_fmt(summary: Summary, body: Iterable[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_modules(summary, body, fname, [
@@ -126,7 +126,7 @@ def nodep_forbid_str_fmt(summary: Summary, body: List[ast.AST], fname: str) -> N
         str,
     ])
 
-def nodep_forbid_float(summary: Summary, body: List[ast.AST], fname: str) -> None:
+def nodep_forbid_float(summary: Summary, body: Iterable[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, body, fname, [

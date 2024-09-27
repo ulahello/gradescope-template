@@ -16,7 +16,7 @@ class Func:
     calls: List["Func"]
     top_node: ast.AST
     todo_body: Optional[List[ast.AST]] # function body, awaiting being further parsed. if None, the Func is fully initialized.
-    body: List[ast.AST]
+    body: Tuple[ast.AST, ...]
 
     def __init__(self, name: str, parent_def: "Func | str",
                  top_node: ast.AST, body: List[ast.AST]) -> None:
@@ -33,7 +33,7 @@ class Func:
         self.parent_def = parent_def
         self.calls = []
         self.top_node = top_node
-        self.body = body
+        self.body = tuple(body)
         self.todo_body = body
 
     def __hash__(self) -> int:
