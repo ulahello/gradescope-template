@@ -118,7 +118,7 @@ def cmp_ret_nop(expect: Any, actual: Any) -> bool:
 
 def cmp_ret_epsilon(expect: Any, actual: Any,
                     epsilon: float = 0.00001) -> bool: # @CHANGEME (or write your own)
-    if not (isinstance(actual, int) or isinstance(actual, float)):
+    if not isinstance(actual, (int, float)):
         return False
     eq: bool = abs(expect - actual) < epsilon
     return eq

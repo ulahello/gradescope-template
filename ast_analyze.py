@@ -270,6 +270,6 @@ def check_var_eq(to_test: Tuple[Optional[str], str],
 
 def check_call_eq(to_test: Tuple[Optional[str], str],
                   node: ast.Call) -> Optional[bool]:
-    if isinstance(node.func, ast.Name) or isinstance(node.func, ast.Attribute):
+    if isinstance(node.func, (ast.Name, ast.Attribute)):
         return check_var_eq(to_test, node.func)
     return None

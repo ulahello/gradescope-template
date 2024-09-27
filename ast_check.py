@@ -68,7 +68,7 @@ def forbid_funcalls(summary: Summary, body: Iterable[ast.AST], fname: str,
 def forbid_vars(summary: Summary, body: Iterable[ast.AST], fname: str,
                 forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
     for node in walk_nodes_executed(body):
-        if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
+        if isinstance(node, (ast.Name, ast.Attribute)):
             for spec, reasoning in forbidden_vars:
                 (mod_name, var_name) = spec
                 if check_var_eq(spec, node) == True:
@@ -79,7 +79,7 @@ def forbid_vars(summary: Summary, body: Iterable[ast.AST], fname: str,
 def forbid_modules(summary: Summary, body: Iterable[ast.AST], fname: str,
                    forbidden_mods: Iterable[Tuple[str, str]]) -> None:
     for node in walk_nodes_executed(body):
-        if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
+        if isinstance(node, (ast.Name, ast.Attribute)):
             for mod_name, reasoning in forbidden_mods:
                 if check_mod_eq(mod_name, node) == True:
                     msg: str = f"the module `{mod_name}` {reasoning}"
