@@ -7,8 +7,8 @@ import test_recursion_ext
 
 from typing import List, Callable, Optional, Any
 
-def check_rec_ast_cycles(source_names: List[str], sources: List[str], func: Callable[..., Any], func_def_path: str) -> Optional[bool]:
-    (funcs, graph_root) = collect_funcs(source_names, sources, func, func_def_path)
+def check_rec_ast_cycles(source_names: List[str], sources: List[str], func_def_path: str, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+    (funcs, graph_root) = collect_funcs(source_names, sources, func_def_path, func, func_name)
     if graph_root is None:
         return None
     return ast_check.graphp_check_recursion(graph_root, set())
@@ -44,12 +44,15 @@ for path in source_names:
         sources.append(f.read())
 
 
-# TODO: fails, should pick up lambda def
-assert check_rec_ast_cycles(source_names, sources, func0, "test_recursion.py") == False
-assert check_rec_ast_cycles(source_names, sources, func1, "test_recursion.py") == False
-assert check_rec_ast_cycles(source_names, sources, func2, "test_recursion.py") == True
-assert check_rec_ast_cycles(source_names, sources, func3, "test_recursion.py") == True
-assert check_rec_ast_cycles(source_names, sources, func4, "test_recursion.py") == True
-assert check_rec_ast_cycles(source_names, sources, func5, "test_recursion.py") == True
+for func_name, expect in [
+        ("func0", False),
+        ("func1", False),
+        ("func2", True),
+        ("func3", True),
+        ("func4", True),
+        ("func5", True),
+]:
+    func = eval(func_name)
+    assert check_rec_ast_cycles(source_names, sources, "test_recursion.py", func, func_name) == expect, f"{func_name} should yield {expect}"
 
 print("OK")

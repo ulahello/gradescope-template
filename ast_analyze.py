@@ -188,7 +188,12 @@ def _resolve_unresolved(funcs: List[Func],
                 func.calls.append(test_func)
                 break
 
-def collect_funcs(source_paths: Iterable[str], sources: Iterable[str], func: Callable[..., Any], func_def_path: str) -> Tuple[List[Func], Optional[Func]]:
+def collect_funcs(source_paths: Iterable[str], sources: Iterable[str],
+                  func_def_path: str, func: Callable[..., Any],
+                  func_name: Optional[str] = None) -> Tuple[List[Func], Optional[Func]]:
+    if func_name is None:
+        func_name = func.__code__.co_name
+
     # collect function call graph for entirety of sources
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
@@ -204,8 +209,7 @@ def collect_funcs(source_paths: Iterable[str], sources: Iterable[str], func: Cal
     graph_root: Optional[Func] = None
     for test_func in funcs:
         if test_func.parent_def == func_def_path:
-            # TODO: doesn't consider functions defined as lambdas (eg. `inc = lambda x: x + 1`)
-            if test_func.name == func.__code__.co_name:
+            if test_func.name == func_name:
                 # found it!
                 graph_root = test_func
 

@@ -272,6 +272,7 @@ class CaseCheckAst(Case):
                  source_paths: List[str],
                  pass_msg: str,
                  fail_msg: str,
+                 func_name: Optional[str] = None,
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, name=case_name, warning=warning)
@@ -283,6 +284,7 @@ class CaseCheckAst(Case):
         self.node_predicate = node_predicate
 
         self.func = func
+        self.func_name = func_name
         self.func_def_path = func_def_path
         self.source_paths = source_paths
 
@@ -310,7 +312,7 @@ class CaseCheckAst(Case):
     def check_passed(self) -> None:
         assert self.has_run
 
-        (funcs, graph_root) = collect_funcs(self.source_paths, self.sources, self.func, self.func_def_path)
+        (funcs, graph_root) = collect_funcs(self.source_paths, self.sources, self.func_def_path, self.func, self.func_name)
 
         # can't do anything if we can't find the function definition
         if graph_root is None:

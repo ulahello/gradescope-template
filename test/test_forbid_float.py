@@ -6,11 +6,11 @@ from cases import *
 import ast_check
 import test_recursion_ext
 
-from typing import List, Callable, Optional, Any
+from typing import List, Callable, Optional, Any, Set
 import cmath
 import math
 
-def uses_float_op(source_paths: List[str], sources: List[str], func: Callable[..., Any], func_def_path: str) -> Optional[bool]:
+def uses_float_op(source_paths: List[str], sources: List[str], func_def_path: str, func: Callable[..., Any], func_name: str) -> Optional[bool]:
     def call_node_predicate(node_predicate: NodePredicate, summary: ast_check.Summary,
                             func: Func, seen: Set[Func]) -> None:
         if func in seen:
@@ -22,7 +22,7 @@ def uses_float_op(source_paths: List[str], sources: List[str], func: Callable[..
         for called in func.calls:
             call_node_predicate(node_predicate, summary, called, seen)
 
-    (funcs, graph_root) = collect_funcs(source_paths, sources, func, func_def_path)
+    (funcs, graph_root) = collect_funcs(source_paths, sources, func_def_path, func, func_name)
 
     # can't do anything if we can't find the function definition
     if graph_root is None:
@@ -34,41 +34,41 @@ def uses_float_op(source_paths: List[str], sources: List[str], func: Callable[..
 
     return len(summary) != 0
 
-def div():
+def div() -> float:
     return 4 / 3
 
-def const():
+def const() -> float:
     return 6.9
 
-def math_func():
+def math_func() -> float:
     return math.sqrt(3)
 
-def math_var():
+def math_var() -> float:
     return math.pi
 
-def bad1():
+def bad1() -> float:
     return div()
 
-def bad2():
+def bad2() -> float:
     return const()
 
-def bad3():
+def bad3() -> float:
     return math_func()
 
-def bad4():
+def bad4() -> float:
     return math_var()
 
-def ok1():
+def ok1() -> int:
     return 3 // 2
 
-def ok2():
+def ok2() -> int:
     return ok1()
 
-def ok3():
+def ok3() -> int:
     func = lambda x: float(x)
     return ok1()
 
-def ok4():
+def ok4() -> int:
     class Vec2:
         x: float
         y: float
@@ -90,24 +90,26 @@ for path in source_paths:
         sources.append(f.read())
 [this] = source_paths
 
-for func in [
-        div,
-        const,
-        math_func,
-        math_var,
-        bad1,
-        bad2,
-        bad3,
-        bad4,
+for func_name in [
+        "div",
+        "const",
+        "math_func",
+        "math_var",
+        "bad1",
+        "bad2",
+        "bad3",
+        "bad4",
 ]:
-    assert uses_float_op(source_paths, sources, func, this)
+    func = eval(func_name)
+    assert uses_float_op(source_paths, sources, this, func, func_name)
 
-for func in [
-        ok1,
-        ok2,
-        ok3,
-        ok4,
+for func_name in [
+        "ok1",
+        "ok2",
+        "ok3",
+        "ok4",
 ]:
-    assert not uses_float_op(source_paths, sources, func, this)
+    func = eval(func_name)
+    assert not uses_float_op(source_paths, sources, this, func, func_name)
 
 print("OK")
