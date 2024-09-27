@@ -109,6 +109,10 @@ def forbid_ops(summary: Summary, body: Iterable[ast.AST], fname: str,
 def nodep_forbid_str_fmt(summary: Summary, body: List[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
+    forbid_modules(summary, body, fname, [
+        ("string", "provides a number of string formatting functions and string variables"),
+    ])
+
     forbid_funcalls(summary, body, fname, [
         ((None, "str"), "returns a string"),
         ((None, "repr"), "returns a string"),
