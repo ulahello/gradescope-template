@@ -247,7 +247,7 @@ class CaseScript(CaseIOBase):
         self.run_post()
 
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
-NodePredicate: TypeAlias = Callable[[ast_check.Summary, ast.AST, str], None]
+NodePredicate: TypeAlias = Callable[[ast_check.Summary, List[ast.AST], str], None]
 
 CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 
@@ -302,7 +302,7 @@ class CaseCheckAst(Case):
             return
         seen.add(func)
 
-        (self.node_predicate)(self.summary, func.top_node, func.source_path)
+        (self.node_predicate)(self.summary, func.body, func.source_path)
 
         for called in func.calls:
             self.call_node_predicate(called, seen)

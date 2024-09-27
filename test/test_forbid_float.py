@@ -17,7 +17,7 @@ def uses_float_op(source_paths: List[str], sources: List[str], func: Callable[..
             return
         seen.add(func)
 
-        (node_predicate)(summary, func.top_node, func.source_path)
+        (node_predicate)(summary, func.body, func.source_path)
 
         for called in func.calls:
             call_node_predicate(node_predicate, summary, called, seen)
@@ -29,7 +29,7 @@ def uses_float_op(source_paths: List[str], sources: List[str], func: Callable[..
         return None
 
     # call node predicate on the top level nodes of each called function
-    summary = ast_check.Summary()
+    summary = ast_check.Summary(1)
     call_node_predicate(ast_check.nodep_forbid_float, summary, graph_root, set())
 
     return len(summary) != 0
@@ -64,6 +64,25 @@ def ok1():
 def ok2():
     return ok1()
 
+def ok3():
+    func = lambda x: float(x)
+    return ok1()
+
+def ok4():
+    class Vec2:
+        x: float
+        y: float
+
+        def __init__(self, x: float = 0.0, y: float = 0.0) -> None:
+            self.x = x
+            self.y = y
+
+        def add(self, rhs: Vec2) -> None:
+            self.x += rhs.x
+            self.y += rhs.y
+
+    return ok3()
+
 sources = []
 source_paths = ["test_forbid_float.py"]
 for path in source_paths:
@@ -86,6 +105,8 @@ for func in [
 for func in [
         ok1,
         ok2,
+        ok3,
+        ok4,
 ]:
     assert not uses_float_op(source_paths, sources, func, this)
 

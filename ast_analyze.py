@@ -2,7 +2,7 @@
 
 from core import *
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Generator, cast
 import ast
 
 # TODO: unify module resolution and make it reusable
@@ -16,6 +16,7 @@ class Func:
     calls: List["Func"]
     top_node: ast.AST
     todo_body: Optional[List[ast.AST]] # function body, awaiting being further parsed. if None, the Func is fully initialized.
+    body: List[ast.AST]
 
     def __init__(self, name: str, parent_def: "Func | str",
                  top_node: ast.AST, body: List[ast.AST]) -> None:
@@ -32,6 +33,7 @@ class Func:
         self.parent_def = parent_def
         self.calls = []
         self.top_node = top_node
+        self.body = body
         self.todo_body = body
 
     def __hash__(self) -> int:
@@ -45,6 +47,34 @@ class Func:
 
     def is_fully_init(self) -> bool:
         return self.todo_body is None
+
+def is_node_executed(node: ast.AST) -> bool:
+    # the child nodes of the following types are not executed
+    # until the function is called or class is used (etc)
+    for ty in [ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda]:
+        if isinstance(node, ty):
+            return False
+    return True
+
+def iter_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, None]:
+    """Iterate the flat list of nodes to yield those that may be executed directly (eg. excluding nodes in function or class definitions)."""
+
+    for node in body:
+        if is_node_executed(node):
+            yield node
+    return None
+
+def walk_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, None]:
+    """Recursively walk the list of nodes to yield those that may be
+    executed directly (eg. excluding nodes in function or class
+    definitions). This will traverse the subtrees contained by the top
+    level nodes, unlike `iter_nodes_executed`, which only yields
+    top-level nodes."""
+
+    for child in iter_nodes_executed(body):
+        if is_node_executed(child):
+            yield child
+            yield from walk_nodes_executed(ast.iter_child_nodes(child))
 
 def _collect_defs_shallow(parent_def: Func | str, func_body: Iterable[ast.AST]) -> Set[Func]:
     funcs: Set[Func] = set()
@@ -83,11 +113,7 @@ def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
     calls: Set[Tuple[Optional[str], str]] = set()
 
     # visit all child nodes, excluding child nodes of function or lambda definitions
-    for node in body:
-        for ty in [ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda]:
-            if isinstance(node, ty):
-                continue
-
+    for node in iter_nodes_executed(body):
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name):
                 calls.add((None, node.func.id))

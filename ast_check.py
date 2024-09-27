@@ -51,11 +51,9 @@ class Summary:
     def whys(self) -> List[Cause]:
         return self._whys[:self.max_to_report]
 
-# TODO: (node predicate approach): nested function definitions are considered executed code because we just ast.walk(top_node)
-
-def forbid_funcalls(summary: Summary, top_node: ast.AST, fname: str,
+def forbid_funcalls(summary: Summary, body: Iterable[ast.AST], fname: str,
                     forbidden_funcs: Iterable[Tuple[Tuple[Optional[str], str], str]]) -> None:
-    for node in ast.walk(top_node):
+    for node in walk_nodes_executed(body):
         if isinstance(node, ast.Call):
             for func, reasoning in forbidden_funcs:
                 (func_mod, func_name) = func
@@ -67,9 +65,9 @@ def forbid_funcalls(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_vars(summary: Summary, top_node: ast.AST, fname: str,
+def forbid_vars(summary: Summary, body: Iterable[ast.AST], fname: str,
                 forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
-    for node in ast.walk(top_node):
+    for node in walk_nodes_executed(body):
         if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
             for spec, reasoning in forbidden_vars:
                 (mod_name, var_name) = spec
@@ -78,9 +76,9 @@ def forbid_vars(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_modules(summary: Summary, top_node: ast.AST, fname: str,
+def forbid_modules(summary: Summary, body: Iterable[ast.AST], fname: str,
                    forbidden_mods: Iterable[Tuple[str, str]]) -> None:
-    for node in ast.walk(top_node):
+    for node in walk_nodes_executed(body):
         if isinstance(node, ast.Attribute) or isinstance(node, ast.Name):
             for mod_name, reasoning in forbidden_mods:
                 if check_mod_eq(mod_name, node) == True:
@@ -88,9 +86,9 @@ def forbid_modules(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_literals_of_type(summary: Summary, top_node: ast.AST, fname: str,
+def forbid_literals_of_type(summary: Summary, body: Iterable[ast.AST], fname: str,
                             forbidden_types: Iterable[Type[Any]]) -> None:
-    for node in ast.walk(top_node):
+    for node in walk_nodes_executed(body):
         if isinstance(node, ast.Constant):
             for ty in forbidden_types:
                 if isinstance(node.value, ty):
@@ -98,9 +96,9 @@ def forbid_literals_of_type(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_ops(summary: Summary, top_node: ast.AST, fname: str,
+def forbid_ops(summary: Summary, body: Iterable[ast.AST], fname: str,
                forbidden_ops: List[Tuple[Tuple[Type[ast.AST], str], str]]) -> None:
-    for node in ast.walk(top_node):
+    for node in walk_nodes_executed(body):
         if isinstance(node, ast.BinOp):
             for (bad_op, symbol), reasoning in forbidden_ops:
                 if isinstance(node.op, bad_op):
@@ -108,27 +106,27 @@ def forbid_ops(summary: Summary, top_node: ast.AST, fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def nodep_forbid_str_fmt(summary: Summary, top_node: ast.AST, fname: str) -> None:
+def nodep_forbid_str_fmt(summary: Summary, body: List[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
-    forbid_funcalls(summary, top_node, fname, [
+    forbid_funcalls(summary, body, fname, [
         ((None, "str"), "returns a string"),
         ((None, "repr"), "returns a string"),
     ])
 
-    forbid_literals_of_type(summary, top_node, fname, [
+    forbid_literals_of_type(summary, body, fname, [
         str,
     ])
 
-def nodep_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
+def nodep_forbid_float(summary: Summary, body: List[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
-    forbid_funcalls(summary, top_node, fname, [
+    forbid_funcalls(summary, body, fname, [
         ((None, "complex"), "returns a complex number, which in Python consists of two floats"),
         ((None, "float"), "returns a float"),
     ])
     forbid_funcalls(
-        summary, top_node, fname,
+        summary, body, fname,
         map(lambda spec: (spec, "returns a float"), [
             # functions in `math`
             ("math", "fabs"),
@@ -174,7 +172,7 @@ def nodep_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
         ])
     )
 
-    forbid_vars(summary, top_node, fname,
+    forbid_vars(summary, body, fname,
                 map(lambda spec: (spec, "is a float"), [
                     ("math", "pi"),
                     ("math", "e"),
@@ -183,16 +181,16 @@ def nodep_forbid_float(summary: Summary, top_node: ast.AST, fname: str) -> None:
                     ("math", "nan"),
                 ]))
 
-    forbid_modules(summary, top_node, fname, [
+    forbid_modules(summary, body, fname, [
         ("cmath", "works with complex numbers, which in Python consist of two floats"),
     ])
 
-    forbid_literals_of_type(summary, top_node, fname, [
+    forbid_literals_of_type(summary, body, fname, [
         float,
         complex,
     ])
 
-    forbid_ops(summary, top_node, fname, [
+    forbid_ops(summary, body, fname, [
         ((ast.Div, "/"), "yields a float"),
     ])
 
