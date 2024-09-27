@@ -253,6 +253,7 @@ CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 
 class CaseCheckAst(Case):
     func: Callable[..., Any]
+    func_name: Optional[str]
     func_def_path: str
     source_paths: List[str]
     sources: List[str]
@@ -268,11 +269,11 @@ class CaseCheckAst(Case):
                  graph_predicate: Optional[GraphPredicate],
                  node_predicate: Optional[NodePredicate],
                  func: Callable[..., Any],
+                 func_name: Optional[str],
                  func_def_path: str,
                  source_paths: List[str],
                  pass_msg: str,
                  fail_msg: str,
-                 func_name: Optional[str] = None,
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, name=case_name, warning=warning)
@@ -370,6 +371,7 @@ class CaseCheckRecursive(CaseCheckAst):
     def __init__(self,
                  visible: bool,
                  func: Callable[..., Any],
+                 func_name: Optional[str],
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
@@ -378,8 +380,8 @@ class CaseCheckRecursive(CaseCheckAst):
         super().__init__(visible, case_name=case_name,
                          graph_predicate=ast_check.graphp_check_recursion,
                          node_predicate=None,
-                         func=func, func_def_path=func_def_path,
-                         source_paths=source_paths,
+                         func=func, func_name=func_name,
+                         func_def_path=func_def_path, source_paths=source_paths,
                          pass_msg="Found recursion!",
                          fail_msg="Did not find recursion!",
                          warning=warning)
@@ -388,6 +390,7 @@ class CaseForbidFloat(CaseCheckAst):
     def __init__(self,
                  visible: bool,
                  func: Callable[..., Any],
+                 func_name: Optional[str],
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
@@ -396,7 +399,8 @@ class CaseForbidFloat(CaseCheckAst):
         super().__init__(visible, case_name=case_name,
                          node_predicate=ast_check.nodep_forbid_float,
                          graph_predicate=None,
-                         func=func, func_def_path=func_def_path,
+                         func=func, func_name=func_name,
+                         func_def_path=func_def_path,
                          source_paths=source_paths,
                          pass_msg="Did not find floating point operations, as expected.",
                          fail_msg="Unexpectedly found floating point operations.",
@@ -406,6 +410,7 @@ class CaseForbidStrFmt(CaseCheckAst):
     def __init__(self,
                  visible: bool,
                  func: Callable[..., Any],
+                 func_name: Optional[str],
                  func_def_path: str,
                  source_paths: List[str],
                  case_name: str,
@@ -414,7 +419,8 @@ class CaseForbidStrFmt(CaseCheckAst):
         super().__init__(visible, case_name=case_name,
                          node_predicate=ast_check.nodep_forbid_str_fmt,
                          graph_predicate=None,
-                         func=func, func_def_path=func_def_path,
+                         func=func, func_name=func_name,
+                         func_def_path=func_def_path,
                          source_paths=source_paths,
                          pass_msg="Did not find string formatting, as expected.",
                          fail_msg="Unexpectedly found string formatting.",
