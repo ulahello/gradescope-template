@@ -86,12 +86,30 @@ def _collect_defs_shallow(parent_def: Func | str, func_body: Iterable[ast.AST]) 
             # def foo(...):
             funcname = top_node.name
             body = cast(List[ast.AST], top_node.body)
-        elif isinstance(top_node, ast.Assign):
+
+        elif isinstance(top_node, (ast.Assign, ast.AnnAssign)):
             # foo = lambda ...
-            if len(top_node.targets) == 1:
-                [name_node] = top_node.targets
-                if isinstance(name_node, ast.Name):
-                    funcname = name_node.id
+
+            # extract body
+            if isinstance(top_node.value, ast.Lambda):
+                body = [top_node.value.body]
+
+            # extract name
+            name_node: Optional[ast.AST] = None
+            if isinstance(top_node, ast.Assign):
+                if len(top_node.targets) == 1:
+                    [name_node] = top_node.targets
+            elif isinstance(top_node, ast.AnnAssign):
+                # foo: Callable[...] = lambda ...
+                name_node = top_node.target
+            if isinstance(name_node, ast.Name):
+                funcname = name_node.id
+
+        elif isinstance(top_node, ast.AnnAssign):
+            # foo: Callable[...] = lambda ...
+            name_node = top_node.target
+            if isinstance(name_node, ast.Name):
+                funcname = name_node.id
             if isinstance(top_node.value, ast.Lambda):
                 body = [top_node.value.body]
 
