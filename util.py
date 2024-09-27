@@ -96,6 +96,23 @@ def count_freq(iter: Iterable[Hashable]) -> Dict[Hashable, int]:
         f[k] += 1
     return f
 
+def nth(rank: int) -> str:
+    assert 0 <= rank
+    suffix: str
+    ones: int = rank % 10
+    tens: int = (rank // 10) % 10
+    if tens == 1:
+        suffix = "th"
+    elif ones == 1:
+        suffix = "st"
+    elif ones == 2:
+        suffix = "nd"
+    elif ones == 3:
+        suffix = "rd"
+    else:
+        suffix = "th"
+    return f"{rank}{suffix}"
+
 def cmp_ret_nop(expect: Any, actual: Any) -> bool:
     return True
 
