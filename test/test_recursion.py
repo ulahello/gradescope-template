@@ -19,6 +19,10 @@ def func1(x: int) -> int:
     return 0
 
 def func2(x: int) -> int:
+    inner = lambda x: 0 if x == 0 else inner(x - 1) # type: ignore
+    return inner(x) # type: ignore
+
+def func2b(x: int) -> int:
     inner: Callable[[int], int] = lambda x: 0 if x == 0 else inner(x - 1)
     return inner(x)
 
@@ -47,7 +51,8 @@ for path in source_names:
 for func_name, expect in [
         ("func0", False),
         ("func1", False),
-        # ("func2", True),
+        ("func2", True),
+        ("func2b", True), # FIXME: fails
         ("func3", True),
         ("func4", True),
         ("func5", True),
