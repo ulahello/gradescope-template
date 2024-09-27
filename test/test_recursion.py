@@ -15,6 +15,8 @@ def check_rec_ast_cycles(source_names: List[str], sources: List[str], func_def_p
 
 func0 = lambda x: 0
 
+func0b: Callable[[int], int] = lambda x: 0
+
 def func1(x: int) -> int:
     return 0
 
@@ -41,23 +43,24 @@ def func4(x: int) -> int:
 def func5(x: int) -> int:
     return func4(x)
 
-sources = []
-source_names = ["test_recursion.py", "test_recursion_ext.py"]
-for path in source_names:
-    with open(path, "r") as f:
-        sources.append(f.read())
+if __name__ == "__main__":
+    sources = []
+    source_names = ["test_recursion.py", "test_recursion_ext.py"]
+    for path in source_names:
+        with open(path, "r") as f:
+            sources.append(f.read())
 
+    for func_name, expect in [
+            ("func0", False),
+            ("func0b", False),
+            ("func1", False),
+            ("func2", True),
+            ("func2b", True), # FIXME: fails
+            ("func3", True),
+            ("func4", True),
+            ("func5", True),
+       ]:
+        func = eval(func_name)
+        assert check_rec_ast_cycles(source_names, sources, "test_recursion.py", func, func_name) == expect, f"{func_name} should yield {expect}"
 
-for func_name, expect in [
-        ("func0", False),
-        ("func1", False),
-        ("func2", True),
-        ("func2b", True), # FIXME: fails
-        ("func3", True),
-        ("func4", True),
-        ("func5", True),
-]:
-    func = eval(func_name)
-    assert check_rec_ast_cycles(source_names, sources, "test_recursion.py", func, func_name) == expect, f"{func_name} should yield {expect}"
-
-print("OK")
+    print("OK")

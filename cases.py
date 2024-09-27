@@ -434,7 +434,7 @@ def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
         if len(tree.body) >= 1:
             node = tree.body[0]
             uses_def = isinstance(node, ast.FunctionDef)
-            if isinstance(node, ast.Assign):
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
                 uses_lambda = isinstance(node.value, ast.Lambda)
 
     return (uses_lambda, uses_def)
