@@ -89,7 +89,11 @@ def forbid_modules(summary: Summary, body: Iterable[ast.AST], fname: str,
 def forbid_literals_of_type(summary: Summary, body: Iterable[ast.AST], fname: str,
                             forbidden_types: Iterable[Type[Any]]) -> None:
     for node in walk_nodes_executed(body):
-        if isinstance(node, ast.Constant):
+        if isinstance(node, ast.JoinedStr):
+            if str in forbidden_types:
+                why = Cause(fname, node, "f-strings are forbidden")
+                summary.report(why)
+        elif isinstance(node, ast.Constant):
             for ty in forbidden_types:
                 if isinstance(node.value, ty):
                     msg: str = f"`{ty.__name__}` literals are forbidden"
