@@ -80,7 +80,7 @@ def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     location = f"{WHERE_THE_SUBMISSION_IS}/{fname}"
     spec: Optional[ModuleSpec] = iu.spec_from_file_location(modname, location)
     if spec is None:
-        raise AutograderError(None, "Python failed to load the submission and did not say why. Try checking the file extension?")
+        raise AutograderError(None, f"Python failed to load the submission '{fname}' and did not say why. Try checking the file extension?")
 
     loader: Optional[Loader] = spec.loader
     assert loader is not None, "docs say 'Finders should always set this'"
