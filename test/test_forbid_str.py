@@ -58,23 +58,27 @@ def ok1() -> int:
 def ok2() -> float:
     return math.sqrt(4.2)
 
-sources = []
-source_paths = ["test_forbid_str.py"]
-for path in source_paths:
-    with open(path, "r") as f:
-        sources.append(f.read())
-[this] = source_paths
+def main() -> None:
+    sources = []
+    source_paths = ["test_forbid_str.py"]
+    for path in source_paths:
+        with open(path, "r") as f:
+            sources.append(f.read())
+    [this] = source_paths
 
-for func_name, expect in [
-        ("bad1", True),
-        ("bad2", True),
-        ("bad3", True),
-        # ("bad4", True), # FIXME: fails
-        ("bad5", True),
-        ("ok1", False),
-        ("ok2", False),
-]:
-    func = eval(func_name)
-    assert uses_str_fmt(source_paths, sources, this, func, func_name) == expect, f"{func_name} should yield {expect}"
+    for func_name, expect in [
+            ("bad1", True),
+            ("bad2", True),
+            ("bad3", True),
+            # ("bad4", True), # FIXME: fails
+            ("bad5", True),
+            ("ok1", False),
+            ("ok2", False),
+       ]:
+        func = eval(func_name)
+        assert uses_str_fmt(source_paths, sources, this, func, func_name) == expect, f"{func_name} should yield {expect}"
 
-print("OK")
+    print("OK")
+
+if __name__ == "__main__":
+    main()

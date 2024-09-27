@@ -83,33 +83,37 @@ def ok4() -> int:
 
     return ok3()
 
-sources = []
-source_paths = ["test_forbid_float.py"]
-for path in source_paths:
-    with open(path, "r") as f:
-        sources.append(f.read())
-[this] = source_paths
+def main() -> None:
+    sources = []
+    source_paths = ["test_forbid_float.py"]
+    for path in source_paths:
+        with open(path, "r") as f:
+            sources.append(f.read())
+    [this] = source_paths
 
-for func_name in [
-        "div",
-        "const",
-        "math_func",
-        "math_var",
-        "bad1",
-        "bad2",
-        "bad3",
-        "bad4",
-]:
-    func = eval(func_name)
-    assert uses_float_op(source_paths, sources, this, func, func_name)
+    for func_name in [
+            "div",
+            "const",
+            "math_func",
+            "math_var",
+            "bad1",
+            "bad2",
+            "bad3",
+            "bad4",
+       ]:
+        func = eval(func_name)
+        assert uses_float_op(source_paths, sources, this, func, func_name)
 
-for func_name in [
-        "ok1",
-        "ok2",
-        "ok3",
-        "ok4",
-]:
-    func = eval(func_name)
-    assert not uses_float_op(source_paths, sources, this, func, func_name)
+    for func_name in [
+            "ok1",
+            "ok2",
+            "ok3",
+            "ok4",
+       ]:
+        func = eval(func_name)
+        assert not uses_float_op(source_paths, sources, this, func, func_name)
 
-print("OK")
+    print("OK")
+
+if __name__ == "__main__":
+    main()

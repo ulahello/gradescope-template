@@ -1,4 +1,4 @@
-from test_recursion import *
+import test_recursion
 
 import cases
 
@@ -13,7 +13,7 @@ def main() -> None:
             ("func4", (False, True)),
             ("func5", (False, True)),
        ]:
-        func = eval(func_name)
+        func = eval(f"test_recursion.{func_name}")
         assert cases.check_def_style(func) == expect, f"{func_name} should yield {expect}"
 
     print("OK")

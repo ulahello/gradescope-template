@@ -43,7 +43,7 @@ def func4(x: int) -> int:
 def func5(x: int) -> int:
     return func4(x)
 
-if __name__ == "__main__":
+def main() -> None:
     sources = []
     source_names = ["test_recursion.py", "test_recursion_ext.py"]
     for path in source_names:
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             ("func0b", False),
             ("func1", False),
             ("func2", True),
-            ("func2b", True), # FIXME: fails
+            ("func2b", True),
             ("func3", True),
             ("func4", True),
             ("func5", True),
@@ -64,3 +64,6 @@ if __name__ == "__main__":
         assert check_rec_ast_cycles(source_names, sources, "test_recursion.py", func, func_name) == expect, f"{func_name} should yield {expect}"
 
     print("OK")
+
+if __name__ == "__main__":
+    main()
