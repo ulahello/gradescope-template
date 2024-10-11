@@ -5,12 +5,16 @@ from util import *
 import io_trace
 
 from io import StringIO
-from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, Set, cast
+from typing import List, Optional, Tuple, Any, Callable, TypeVar, Type, Set, Iterable, cast
+
+def fmt_args_overridable(args: Tuple[Any, ...], override: Optional[Iterable[str]]) -> str:
+    if override is None:
+        return fmt_args(args)
+    else:
+        return "(" + ", ".join(override) + ")"
 
 class EarlyReturn(Exception):
     pass
-
-# TODO: allow overriding args expression
 
 class CasePipeline(CaseAdHoc):
     GoldenObj = TypeVar("GoldenObj")
@@ -102,10 +106,11 @@ class CasePipeline(CaseAdHoc):
              args_test: Optional[Tuple[Any, ...]] = None,
              cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
              fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
-             varname: Optional[str] = None) -> Tuple[GoldenObj, TestObj]:
+             varname: Optional[str] = None,
+             args_override: Optional[Iterable[str]] = None) -> Tuple[GoldenObj, TestObj]:
         if varname is None:
             varname = self.varname
-        expr: str = f"{test_t.__name__}{fmt_args(args)}"
+        expr: str = f"{test_t.__name__}{fmt_args_overridable(args, args_override)}"
         args_golden = args
         if args_test is None:
             args_test = args
@@ -127,12 +132,13 @@ class CasePipeline(CaseAdHoc):
                fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
                varname: Optional[str] = None,
                assign_to: Optional[str] = None,
+               args_override: Optional[Iterable[str]] = None,
                expr_override: Optional[str] = None) -> Tuple[Any, Any]:
         if varname is None:
             varname = self.varname
         expr: str
         if expr_override is None:
-            expr = f"{varname}.{test_f.__name__}{fmt_args(args)}"
+            expr = f"{varname}.{test_f.__name__}{fmt_args_overridable(args, args_override)}"
         else:
             expr = expr_override
         args_golden = args
@@ -142,10 +148,10 @@ class CasePipeline(CaseAdHoc):
             golden_f=golden_f, test_f=test_f,
             args=(golden, *args_golden),
             args_test=(test, *args_test),
-            expr_override=expr,
             cmp_ret=cmp_ret, repr_ret=repr_ret, describe_ret=describe_ret,
             cmp_io=cmp_io, fmt_io=fmt_io,
             assign_to=assign_to,
+            expr_override=expr,
         )
 
     def funcall(self,
@@ -158,11 +164,12 @@ class CasePipeline(CaseAdHoc):
                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
                 assign_to: Optional[str] = None,
+                args_override: Optional[Iterable[str]] = None,
                 expr_override: Optional[str] = None) -> Tuple[Any, Any]:
         self.start_step_log()
         expr: str
         if expr_override is None:
-            expr = f"{test_f.__name__}{fmt_args(args)}"
+            expr = f"{test_f.__name__}{fmt_args_overridable(args, args_override)}"
         else:
             expr = expr_override
         if assign_to is not None:
