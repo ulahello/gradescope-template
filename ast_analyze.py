@@ -206,12 +206,7 @@ def _resolve_unresolved(funcs: List[Func],
                 func.calls.append(test_func)
                 break
 
-def collect_funcs(source_paths: Iterable[str], sources: Iterable[str],
-                  func_def_path: str, func: Callable[..., Any],
-                  func_name: Optional[str] = None) -> Tuple[List[Func], Optional[Func]]:
-    if func_name is None:
-        func_name = func.__code__.co_name
-
+def collect_funcs(source_paths: Iterable[str], sources: Iterable[str]) -> List[Func]:
     # collect function call graph for entirety of sources
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
@@ -222,6 +217,14 @@ def collect_funcs(source_paths: Iterable[str], sources: Iterable[str],
 
     _resolve_unresolved(funcs, todo_resolve)
     assert len(todo_resolve) == 0
+
+    return funcs
+
+def identify_func(funcs: List[Func],
+                  func_def_path: str, func: Callable[..., Any],
+                  func_name: Optional[str] = None) -> Optional[Func]:
+    if func_name is None:
+        func_name = func.__code__.co_name
 
     # identify the function we're checking within the call graph
     graph_root: Optional[Func] = None
@@ -236,7 +239,7 @@ def collect_funcs(source_paths: Iterable[str], sources: Iterable[str],
         # TODO: is this unreachable given correct inputs?
         pass
 
-    return (funcs, graph_root)
+    return graph_root
 
 def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
     name: Optional[str] = None

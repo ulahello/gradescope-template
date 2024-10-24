@@ -11,18 +11,8 @@ import cmath
 import math
 
 def uses_float_op(source_paths: List[str], sources: List[str], func_def_path: str, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    def call_node_predicate(node_predicate: NodePredicate, summary: ast_check.Summary,
-                            func: Func, seen: Set[Func]) -> None:
-        if func in seen:
-            return
-        seen.add(func)
-
-        (node_predicate)(summary, func.body, func.source_path)
-
-        for called in func.calls:
-            call_node_predicate(node_predicate, summary, called, seen)
-
-    (funcs, graph_root) = collect_funcs(source_paths, sources, func_def_path, func, func_name)
+    funcs = collect_funcs(source_paths, sources)
+    graph_root = identify_func(funcs, func_def_path, func, func_name)
 
     # can't do anything if we can't find the function definition
     if graph_root is None:
@@ -30,7 +20,7 @@ def uses_float_op(source_paths: List[str], sources: List[str], func_def_path: st
 
     # call node predicate on the top level nodes of each called function
     summary = ast_check.Summary(1)
-    call_node_predicate(ast_check.nodep_forbid_float, summary, graph_root, set())
+    ast_check.call_node_predicate(ast_check.nodep_forbid_float, summary, graph_root, set())
 
     return len(summary) != 0
 

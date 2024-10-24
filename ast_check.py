@@ -7,8 +7,28 @@ graph predicates respectively for CaseCheckAst.
 
 from ast_analyze import *
 
-from typing import Optional, Set, List, Tuple, Iterable, Any, Type
+from typing import Optional, Set, List, Tuple, Iterable, Sequence, Any, Callable, Type, TypeAlias
 import ast
+
+GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
+NodePredicate: TypeAlias = Callable[["Summary", Sequence[ast.AST], str], None]
+
+def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summary",
+                        func: Func, seen: Set[Func]) -> None:
+    if node_predicate is None:
+        return
+    if func in seen:
+        return
+    seen.add(func)
+
+    (node_predicate)(
+        summary,
+        list(walk_nodes_executed(func.body)),
+        func.source_path,
+    )
+
+    for called in func.calls:
+        call_node_predicate(node_predicate, summary, called, seen)
 
 class Cause:
     fname: str
@@ -51,9 +71,9 @@ class Summary:
     def whys(self) -> List[Cause]:
         return self._whys[:self.max_to_report]
 
-def forbid_funcalls(summary: Summary, body: Iterable[ast.AST], fname: str,
+def forbid_funcalls(summary: Summary, body: Sequence[ast.AST], fname: str,
                     forbidden_funcs: Iterable[Tuple[Tuple[Optional[str], str], str]]) -> None:
-    for node in walk_nodes_executed(body):
+    for node in body:
         if isinstance(node, ast.Call):
             for func, reasoning in forbidden_funcs:
                 (func_mod, func_name) = func
@@ -65,9 +85,9 @@ def forbid_funcalls(summary: Summary, body: Iterable[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_vars(summary: Summary, body: Iterable[ast.AST], fname: str,
+def forbid_vars(summary: Summary, body: Sequence[ast.AST], fname: str,
                 forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
-    for node in walk_nodes_executed(body):
+    for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
             for spec, reasoning in forbidden_vars:
                 (mod_name, var_name) = spec
@@ -76,9 +96,9 @@ def forbid_vars(summary: Summary, body: Iterable[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_modules(summary: Summary, body: Iterable[ast.AST], fname: str,
+def forbid_modules(summary: Summary, body: Sequence[ast.AST], fname: str,
                    forbidden_mods: Iterable[Tuple[str, str]]) -> None:
-    for node in walk_nodes_executed(body):
+    for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
             for mod_name, reasoning in forbidden_mods:
                 if check_mod_eq(mod_name, node) == True:
@@ -86,9 +106,9 @@ def forbid_modules(summary: Summary, body: Iterable[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_literals_of_type(summary: Summary, body: Iterable[ast.AST], fname: str,
+def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: str,
                             forbidden_types: Iterable[Type[Any]]) -> None:
-    for node in walk_nodes_executed(body):
+    for node in body:
         if isinstance(node, ast.JoinedStr):
             if str in forbidden_types:
                 why = Cause(fname, node, "f-strings are forbidden")
@@ -100,9 +120,9 @@ def forbid_literals_of_type(summary: Summary, body: Iterable[ast.AST], fname: st
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_ops(summary: Summary, body: Iterable[ast.AST], fname: str,
+def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: str,
                forbidden_ops: List[Tuple[Tuple[Type[ast.AST], str], str]]) -> None:
-    for node in walk_nodes_executed(body):
+    for node in body:
         if isinstance(node, ast.BinOp):
             for (bad_op, symbol), reasoning in forbidden_ops:
                 if isinstance(node.op, bad_op):
@@ -110,7 +130,7 @@ def forbid_ops(summary: Summary, body: Iterable[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def nodep_forbid_str_fmt(summary: Summary, body: Iterable[ast.AST], fname: str) -> None:
+def nodep_forbid_str_fmt(summary: Summary, body: Sequence[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_modules(summary, body, fname, [
@@ -126,7 +146,7 @@ def nodep_forbid_str_fmt(summary: Summary, body: Iterable[ast.AST], fname: str) 
         str,
     ])
 
-def nodep_forbid_float(summary: Summary, body: Iterable[ast.AST], fname: str) -> None:
+def nodep_forbid_float(summary: Summary, body: Sequence[ast.AST], fname: str) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, body, fname, [

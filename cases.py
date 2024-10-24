@@ -5,7 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, TypeAlias
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple
 import ast
 import inspect
 
@@ -246,34 +246,92 @@ class CaseScript(CaseIOBase):
 
         self.run_post()
 
-GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
-NodePredicate: TypeAlias = Callable[[ast_check.Summary, Iterable[ast.AST], str], None]
-
 CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 
-class CaseCheckAst(Case):
+# bundle of data used to instantiate source node predicates
+class SourceSpec(NamedTuple):
+    source_paths: List[str]
+
+# bundle of data used to instantiate func node predicates
+class FuncSpec(NamedTuple):
     func: Callable[..., Any]
     func_name: Optional[str]
     func_def_path: str
     source_paths: List[str]
-    sources: List[str]
-    found_root: Optional[bool]
 
-    graph_predicate: Optional[GraphPredicate]
-    node_predicate: Optional[NodePredicate]
+    def resolve_func_name(self) -> str:
+        if self.func_name is not None:
+            return self.func_name
+        else:
+            return self.func.__code__.co_name
+
+    def identify_func(self, funcs: List[Func]) -> Optional[Func]:
+        return identify_func(
+            funcs,
+            self.func_def_path,
+            self.func,
+            self.func_name,
+        )
+
+# optional component to CaseCheckAst that performs a basic check on a function in the call graph
+class GraphP:
+    predicate: ast_check.GraphPredicate
+    spec: FuncSpec
+
+    # filled in during use
+    graph_root: Optional[Func]
+
+    def __init__(self, predicate: ast_check.GraphPredicate,
+                 spec: FuncSpec) -> None:
+        self.predicate = predicate
+        self.spec = spec
+
+        self.graph_root = None
+
+# optional component to CaseCheckAst that performs a complex check on a function in the call graph
+class FuncNodeP:
+    predicate: ast_check.NodePredicate
+    spec: FuncSpec
+
+    # filled in during use
+    graph_root: Optional[Func]
+
+    def __init__(self, predicate: ast_check.NodePredicate,
+                 spec: FuncSpec) -> None:
+        self.predicate = predicate
+        self.spec = spec
+
+        self.graph_root = None
+
+# optional component to CaseCheckAst that performs a complex check on a source file's AST
+class SourceNodeP:
+    predicate: ast_check.NodePredicate
+    source_paths: List[str]
+
+    def __init__(self, predicate: ast_check.NodePredicate,
+                 source_paths: List[str]) -> None:
+        self.predicate = predicate
+        self.source_paths = source_paths
+
+class CaseCheckAst(Case):
+    # maps source paths to their contents
+    sources: Dict[str, str]
+
+    # components that are each checked
+    graph_p: Optional[GraphP]
+    func_node_p: Optional[FuncNodeP]
+    source_node_p: Optional[SourceNodeP]
+
     summary: ast_check.Summary
 
-    def __init__(self,
-                 visible: bool,
-                 case_name: str,
-                 graph_predicate: Optional[GraphPredicate],
-                 node_predicate: Optional[NodePredicate],
-                 func: Callable[..., Any],
-                 func_name: Optional[str],
-                 func_def_path: str,
-                 source_paths: List[str],
-                 pass_msg: str,
-                 fail_msg: str,
+    pass_msg: str
+    fail_msg: str
+
+    def __init__(self, visible: bool, case_name: str,
+                 graph_p: Optional[GraphP],
+                 func_node_p: Optional[FuncNodeP],
+                 source_node_p: Optional[SourceNodeP],
+                 pass_msg: str, fail_msg: str,
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         super().__init__(visible, name=case_name, warning=warning)
@@ -281,55 +339,68 @@ class CaseCheckAst(Case):
         self.pass_msg = pass_msg
         self.fail_msg = fail_msg
 
-        self.graph_predicate = graph_predicate
-        self.node_predicate = node_predicate
+        self.graph_p = graph_p
+        self.func_node_p = func_node_p
+        self.source_node_p = source_node_p
 
-        self.func = func
-        self.func_name = func_name
-        self.func_def_path = func_def_path
-        self.source_paths = source_paths
-
-        self.found_root = None
         self.summary = ast_check.Summary(max_diagnostics)
 
-        self.sources = []
-        for path in self.source_paths:
+        # populate sources
+        self.sources = {}
+        if self.graph_p is not None:
+            self._populate_sources(self.graph_p.spec.source_paths)
+        if self.func_node_p is not None:
+            self._populate_sources(self.func_node_p.spec.source_paths)
+        if self.source_node_p is not None:
+            self._populate_sources(self.source_node_p.source_paths)
+
+    def _populate_sources(self, source_paths: List[str]) -> None:
+        for path in source_paths:
+            if path in self.sources:
+                continue
             with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
                 src: str = f.read()
-                self.sources.append(src)
-
-    def call_node_predicate(self, func: Func, seen: Set[Func]) -> None:
-        if self.node_predicate is None:
-            return
-        if func in seen:
-            return
-        seen.add(func)
-
-        (self.node_predicate)(self.summary, func.body, func.source_path)
-
-        for called in func.calls:
-            self.call_node_predicate(called, seen)
+                self.sources[path] = src
 
     def check_passed(self) -> None:
         assert self.has_run
 
-        (funcs, graph_root) = collect_funcs(self.source_paths, self.sources, self.func_def_path, self.func, self.func_name)
+        funcs = collect_funcs(self.sources.keys(), self.sources.values())
+        self.passed = True
 
-        # can't do anything if we can't find the function definition
-        if graph_root is None:
-            self.found_root = False
-            self.passed = False
-            return
-        else:
-            self.found_root = True
-            self.passed = True
+        # graph predicate
+        if self.graph_p is not None:
+            graph_root = self.graph_p.spec.identify_func(funcs)
+            self.graph_p.graph_root = graph_root
+            if graph_root is None:
+                self.passed = False
+            else:
+                self.passed &= (self.graph_p.predicate)(graph_root, set())
 
-        # call graph predicate
-        if self.graph_predicate is not None:
-            self.passed &= (self.graph_predicate)(graph_root, set())
+        # node predicate (funcs)
+        if self.func_node_p is not None:
+            graph_root = self.func_node_p.spec.identify_func(funcs)
+            self.func_node_p.graph_root = graph_root
+            if graph_root is None:
+                self.passed = False
+            else:
+                ast_check.call_node_predicate(
+                    self.func_node_p.predicate,
+                    self.summary,
+                    graph_root,
+                    set(),
+                )
 
-        # call node predicate on the top level nodes of each called function
-        self.call_node_predicate(graph_root, set())
+        # node predicate (directly on ast / source)
+        if self.source_node_p is not None:
+            for source_path in self.source_node_p.source_paths:
+                source: str = self.sources[source_path]
+                source_root: ast.AST = ast.parse(source)
+                (self.source_node_p.predicate)(
+                    self.summary,
+                    list(ast.walk(source_root)),
+                    source_path,
+                )
 
         self.passed &= len(self.summary) == 0
 
@@ -338,13 +409,27 @@ class CaseCheckAst(Case):
         self.run_post()
 
     def format_output(self) -> str:
-        assert self.found_root is not None, "unreachable"
-        if not self.found_root:
-            func_name: str = self.func.__name__
-            return f"Could not find the definition of function {func_name}."
+        output: str = ""
+
+        # check if we're missing any function definitions
+        unresolved: Set[Tuple[str, str]] = set() # (func_def_path, func_name)
+        if self.graph_p is not None:
+            if self.graph_p.graph_root is None:
+                func_name = self.graph_p.spec.resolve_func_name()
+                unresolved.add((self.graph_p.spec.func_def_path, func_name))
+        if self.func_node_p is not None:
+            if self.func_node_p.graph_root is None:
+                func_name = self.func_node_p.spec.resolve_func_name()
+                unresolved.add((self.func_node_p.spec.func_def_path, func_name))
+
+        for (func_def_path, func_name) in unresolved:
+            output += f"Could not find the definition of function {func_name} in file '{func_def_path}'.\n"
+
+        if len(unresolved):
+            return output
+        assert len(output) == 0
 
         # show pass/fail status
-        output: str = ""
         status = self.pass_msg if self.passed else self.fail_msg
         output += status.rstrip() + "\n"
         if self.warning:
@@ -368,60 +453,69 @@ class CaseCheckAst(Case):
         return output
 
 class CaseCheckRecursive(CaseCheckAst):
-    def __init__(self,
-                 visible: bool,
+    def __init__(self, visible: bool, case_name: str,
                  func: Callable[..., Any],
                  func_name: Optional[str],
                  func_def_path: str,
                  source_paths: List[str],
-                 case_name: str,
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
+        spec: FuncSpec = FuncSpec(
+            func=func, func_name=func_name,
+            func_def_path=func_def_path, source_paths=source_paths,
+        )
+        graph_p: GraphP = GraphP(
+            predicate=ast_check.graphp_check_recursion,
+            spec=spec,
+        )
         super().__init__(visible, case_name=case_name,
-                         graph_predicate=ast_check.graphp_check_recursion,
-                         node_predicate=None,
-                         func=func, func_name=func_name,
-                         func_def_path=func_def_path, source_paths=source_paths,
+                         graph_p=graph_p,
+                         func_node_p=None, source_node_p=None,
                          pass_msg="Found recursion!",
                          fail_msg="Did not find recursion!",
                          warning=warning)
 
 class CaseForbidFloat(CaseCheckAst):
-    def __init__(self,
-                 visible: bool,
-                 func: Callable[..., Any],
-                 func_name: Optional[str],
-                 func_def_path: str,
-                 source_paths: List[str],
-                 case_name: str,
+    def __init__(self, visible: bool, case_name: str,
+                 func_node_args: Optional[NamedTuple],
+                 source_node_args: Optional[NamedTuple],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
+        predicate = ast_check.nodep_forbid_float
+        func_node_p = None
+        source_node_p = None
+        if func_node_args is not None:
+            func_node_p = FuncNodeP(predicate, *func_node_args)
+        if source_node_args is not None:
+            source_node_p = SourceNodeP(predicate, *source_node_args)
+        if func_node_p is None and source_node_p is None:
+            raise ValueError("One of func_node_args or source_node_args must be defined, otherwise nothing will be checked.")
         super().__init__(visible, case_name=case_name,
-                         node_predicate=ast_check.nodep_forbid_float,
-                         graph_predicate=None,
-                         func=func, func_name=func_name,
-                         func_def_path=func_def_path,
-                         source_paths=source_paths,
+                         func_node_p=func_node_p,
+                         source_node_p=source_node_p,
+                         graph_p=None,
                          pass_msg="Did not find floating point operations, as expected.",
                          fail_msg="Unexpectedly found floating point operations.",
                          warning=warning)
 
 class CaseForbidStrFmt(CaseCheckAst):
-    def __init__(self,
-                 visible: bool,
-                 func: Callable[..., Any],
-                 func_name: Optional[str],
-                 func_def_path: str,
-                 source_paths: List[str],
-                 case_name: str,
+    def __init__(self, visible: bool, case_name: str,
+                 func_node_args: Optional[NamedTuple],
+                 source_node_args: Optional[NamedTuple],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
+        predicate = ast_check.nodep_forbid_str_fmt
+        func_node_p = None
+        source_node_p = None
+        if func_node_args is not None:
+            func_node_p = FuncNodeP(predicate, *func_node_args)
+        if source_node_args is not None:
+            source_node_p = SourceNodeP(predicate, *source_node_args)
+        if func_node_p is None and source_node_p is None:
+            raise ValueError("One of func_node_args or source_node_args must be defined, otherwise nothing will be checked.")
         super().__init__(visible, case_name=case_name,
-                         node_predicate=ast_check.nodep_forbid_str_fmt,
-                         graph_predicate=None,
-                         func=func, func_name=func_name,
-                         func_def_path=func_def_path,
-                         source_paths=source_paths,
+                         func_node_p=func_node_p, source_node_p=source_node_p,
+                         graph_p=None,
                          pass_msg="Did not find string formatting, as expected.",
                          fail_msg="Unexpectedly found string formatting.",
                          warning=warning)
