@@ -209,12 +209,17 @@ def fmt_io_equ(expect: List[Read | Write],
         line += 1
 
         if le is None:
-            output += fmt_line(line, "too many lines")
+            assert len(la) != 0
+            found = la[0]
+            output += fmt_line(line, f"expected end, but found {found.word()} of `{repr(found.val)}`")
             return output
         elif la is None:
-            output += fmt_line(line, "want additional lines")
+            assert len(le) != 0
+            want = le[0]
+            output += fmt_line(line, f"expected {want.word()} of `{repr(want.val)}`, but found end")
             return output
 
+        # iterate through this line's operations
         for oe, oa in itertools.zip_longest(le, la):
             if oe is None:
                 output += fmt_line(line, f"expected end of line, but found {oa.word()} of `{repr(oa.val)}`.")
