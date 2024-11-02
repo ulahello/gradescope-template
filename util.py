@@ -192,6 +192,13 @@ def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
 def fmt_io_equ(expect: List[Read | Write],
                actual: List[Read | Write],
                passed: bool) -> str:
+    def fmt_line(line: int, msg: str, context: Optional[str] = None) -> str:
+        out = f"Console line {line}"
+        if context is not None:
+            out += f" ({context})"
+        out += f": {msg}\n"
+        return out
+
     output: str = ""
 
     if passed and len(expect) != 0:
@@ -202,27 +209,27 @@ def fmt_io_equ(expect: List[Read | Write],
         line += 1
 
         if le is None:
-            output += f"Console line {line}: too many lines\n"
+            output += fmt_line(line, "too many lines")
             return output
         elif la is None:
-            output += f"Console line {line}: want additional line(s)\n"
+            output += fmt_line(line, "want additional lines")
             return output
 
         for oe, oa in itertools.zip_longest(le, la):
             if oe is None:
-                output += f"Console line {line}: expected end of line, but found {oa.word()} of `{repr(oa.val)}`.\n"
+                output += fmt_line(line, f"expected end of line, but found {oa.word()} of `{repr(oa.val)}`.")
                 return output
             elif oa is None:
-                output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found end of line.\n"
+                output += fmt_line(line, f"expected {oe.word()} of `{repr(oe.val)}`, but found end of line.")
                 return output
 
             if type(oe) != type(oa):
                 # mismatched read/write
-                output += f"Console line {line}: expected {oe.word()} of `{repr(oe.val)}`, but found {oa.word()} of `{repr(oa.val)}`.\n"
+                output += fmt_line(line, f"expected {oe.word()} of `{repr(oe.val)}`, but found {oa.word()} of `{repr(oa.val)}`.")
                 return output
 
             if oe.val != oa.val:
-                output += f"Console line {line} ({oe.word()}): expected `{repr(oe.val)}`, but found `{repr(oa.val)}`.\n"
+                output += fmt_line(line, f"expected `{repr(oe.val)}`, but found `{repr(oa.val)}`.")
                 return output
 
     return output
