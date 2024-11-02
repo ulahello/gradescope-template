@@ -105,7 +105,7 @@ class CasePipeline(CaseAdHoc):
     def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
              args_test: Optional[Tuple[Any, ...]] = None,
              cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-             fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
+             fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
              varname: Optional[str] = None,
              args_override: Optional[Iterable[str]] = None) -> Tuple[GoldenObj, TestObj]:
         if varname is None:
@@ -129,7 +129,7 @@ class CasePipeline(CaseAdHoc):
                repr_ret: Callable[[Any], str] = repr,
                describe_ret: str = "Return value",
                cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-               fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
+               fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
                varname: Optional[str] = None,
                assign_to: Optional[str] = None,
                args_override: Optional[Iterable[str]] = None,
@@ -162,7 +162,7 @@ class CasePipeline(CaseAdHoc):
                 repr_ret: Callable[[Any], str] = repr,
                 describe_ret: str = "Return value",
                 cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-                fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ,
+                fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
                 assign_to: Optional[str] = None,
                 args_override: Optional[Iterable[str]] = None,
                 expr_override: Optional[str] = None) -> Tuple[Any, Any]:

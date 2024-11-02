@@ -144,7 +144,7 @@ class CaseAdHoc(Case):
                   actual: List[Read | Write],
                   silence_pass: bool = False,
                   cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-                  fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ) -> bool:
+                  fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff) -> bool:
         expect = io_trace.normalize_log(expect)
         actual = io_trace.normalize_log(actual)
 
@@ -186,7 +186,7 @@ class CaseFunc(CaseIOBase):
                  io_queue: List[str] = [],
                  io_expect: List[Read | Write] = [],
                  cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_equ) -> None:
+                 fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff) -> None:
         super().__init__(visible, name=name, warning=warning,
                          io_queue=io_queue, io_expect=io_expect,
                          cmp_io=cmp_io, fmt_io=fmt_io)

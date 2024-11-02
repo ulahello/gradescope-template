@@ -189,7 +189,7 @@ def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
 def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
     return fmt_ret_s(repr(expect), repr(actual), eq, prefix)
 
-def fmt_io_equ(expect: List[Read | Write],
+def fmt_io_diff(expect: List[Read | Write],
                actual: List[Read | Write],
                passed: bool) -> str:
     def fmt_line(line: int, msg: str, context: Optional[str] = None) -> str:
@@ -243,6 +243,18 @@ def fmt_io_verbatim(io: List[Read | Write]) -> str:
     output: str = ""
     for op in io:
         output += op.val
+    return output
+
+def fmt_io_equ(expect: List[Read | Write],
+               actual: List[Read | Write],
+               passed: bool) -> str:
+    output: str = ""
+    output += "```text\n"
+    output += fmt_io_verbatim(actual)
+    if not output.endswith("\n"):
+        output += "\n"
+    output += "```\n"
+    output += fmt_io_diff(expect, actual, passed)
     return output
 
 def fmt_args(args: Tuple[Any, ...]) -> str:
