@@ -477,15 +477,15 @@ class CaseCheckRecursive(CaseCheckAst):
 
 class CaseForbidFloat(CaseCheckAst):
     def __init__(self, visible: bool, case_name: str,
-                 func_node_args: Optional[NamedTuple],
-                 source_node_args: Optional[NamedTuple],
+                 func_node_args: Optional[FuncSpec],
+                 source_node_args: Optional[SourceSpec],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         predicate = ast_check.nodep_forbid_float
         func_node_p = None
         source_node_p = None
         if func_node_args is not None:
-            func_node_p = FuncNodeP(predicate, *func_node_args)
+            func_node_p = FuncNodeP(predicate, func_node_args)
         if source_node_args is not None:
             source_node_p = SourceNodeP(predicate, *source_node_args)
         if func_node_p is None and source_node_p is None:
@@ -500,15 +500,15 @@ class CaseForbidFloat(CaseCheckAst):
 
 class CaseForbidStrFmt(CaseCheckAst):
     def __init__(self, visible: bool, case_name: str,
-                 func_node_args: Optional[NamedTuple],
-                 source_node_args: Optional[NamedTuple],
+                 func_node_args: Optional[FuncSpec],
+                 source_node_args: Optional[SourceSpec],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         predicate = ast_check.nodep_forbid_str_fmt
         func_node_p = None
         source_node_p = None
         if func_node_args is not None:
-            func_node_p = FuncNodeP(predicate, *func_node_args)
+            func_node_p = FuncNodeP(predicate, func_node_args)
         if source_node_args is not None:
             source_node_p = SourceNodeP(predicate, *source_node_args)
         if func_node_p is None and source_node_p is None:
