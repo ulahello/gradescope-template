@@ -14,6 +14,59 @@ import os
 
 # TODO: would be nice to be able to check all expected attributes in one sweep and present all errors to student, rather than one-by-one (good compilers will do this, it is nice)
 
+class LoadSummary:
+    errors: List[AutograderError]
+
+    def __init__(self) -> None:
+        self.errors = []
+
+    def get_attribute(self, obj: Optional[Any], attr: str, msg: str) -> Optional[Any]:
+        if obj is None:
+            assert 0 < len(self.errors)
+        try:
+            if obj is not None:
+                return get_attribute(obj, attr, msg)
+        except AutograderError as e:
+            self.errors.append(e)
+        return None
+
+    def get_func(self, mod: Optional[Any], name: str) -> Optional[Callable[..., Any]]:
+        if mod is None:
+            assert 0 < len(self.errors)
+        try:
+            if mod is not None:
+                return get_func(mod, name)
+        except AutograderError as e:
+            self.errors.append(e)
+        return None
+
+    def get_class(self, mod: Optional[Any], name: str) -> Optional[type]:
+        if mod is None:
+            assert 0 < len(self.errors)
+        try:
+            if mod is not None:
+                return get_class(mod, name)
+        except AutograderError as e:
+            self.errors.append(e)
+        return None
+
+    def check_subclass(self, this: Optional[Any], subclass_of: Any) -> None:
+        if this is None:
+            assert 0 < len(self.errors)
+        try:
+            if this is not None:
+                return check_subclass(this, subclass_of)
+        except AutograderError as e:
+            self.errors.append(e)
+
+    def summarize(self) -> None:
+        msg: str = f""
+        for error in self.errors:
+            msg += f"- {error.msg}\n"
+            assert error.inner is None
+        if len(msg):
+            raise AutograderError(None, msg)
+
 def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: # -> (extra, missing)
     attrs: Set[str]
     try:
@@ -35,14 +88,14 @@ def get_attribute(obj: Any, attr: str, msg: str) -> Any:
     return thing
 
 def get_func(mod: Any, name: str) -> Callable[..., Any]:
-    func = get_attribute(mod, name, f"Could not find function '{name}' in '{mod.__name__}'. Is it defined?")
+    func = get_attribute(mod, name, f"Could not find function '{name}' in '{mod.__name__}'.")
     if callable(func):
         return func # type: ignore
     else:
-        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not callable. Is it a function?")
+        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not callable.")
 
 def get_class(mod: Any, name: str) -> type:
-    class_t = get_attribute(mod, name, f"Could not find class '{name}' in '{mod.__name__}'. Is it defined?")
+    class_t = get_attribute(mod, name, f"Could not find class '{name}' in '{mod.__name__}'.")
     if inspect.isclass(class_t):
         return class_t
     else:
