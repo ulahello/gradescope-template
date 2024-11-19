@@ -60,7 +60,7 @@ class LoadSummary:
             self.errors.append(e)
 
     def summarize(self) -> None:
-        msg: str = f""
+        msg: str = f"# Issues\n"
         for error in self.errors:
             msg += f"- {error.msg}\n"
             assert error.inner is None
