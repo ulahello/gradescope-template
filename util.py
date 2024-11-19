@@ -144,7 +144,6 @@ def load_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
 def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     global submission_number
     submission_number += 1
-    # TODO: don't make up module name, show the filename
     modname = f"student_submission_{submission_number}" # just want a unique module name that isn't insane
 
     location = f"{WHERE_THE_SUBMISSION_IS}/{fname}"
