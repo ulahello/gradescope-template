@@ -1,7 +1,7 @@
 from core import AutograderError, Case, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write, LineIter
 
-from importlib.abc import Loader
+from importlib.abc import Loader, FileLoader
 from importlib.machinery import ModuleSpec
 from types import ModuleType
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, cast
@@ -87,19 +87,34 @@ def get_attribute(obj: Any, attr: str, msg: str) -> Any:
         raise AutograderError(None, msg)
     return thing
 
-def get_func(mod: Any, name: str) -> Callable[..., Any]:
-    func = get_attribute(mod, name, f"Could not find function '{name}' in '{mod.__name__}'.")
+def _display_mod_name(mod: Any, fallback: Optional[str]) -> str:
+    if hasattr(mod, "__loader__"):
+        loader = mod.__loader__
+        if isinstance(loader, FileLoader):
+            return f"file '{loader.path}'"
+
+    if inspect.isclass(mod):
+        return f"class '{mod.__name__}'"
+
+    if fallback is None:
+        fallback = mod.__name__
+    return f"'{fallback}'"
+
+def get_func(mod: Any, name: str, mod_name: Optional[str] = None) -> Callable[..., Any]:
+    mod_name = _display_mod_name(mod, mod_name)
+    func = get_attribute(mod, name, f"Could not find function '{name}' in {mod_name}.")
     if callable(func):
         return func # type: ignore
     else:
-        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not callable.")
+        raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a function, but it has the type '{type(func).__name__}'.")
 
-def get_class(mod: Any, name: str) -> type:
-    class_t = get_attribute(mod, name, f"Could not find class '{name}' in '{mod.__name__}'.")
+def get_class(mod: Any, name: str, mod_name: Optional[str] = None) -> type:
+    mod_name = _display_mod_name(mod, mod_name)
+    class_t = get_attribute(mod, name, f"Could not find class '{name}' in {mod_name}.")
     if inspect.isclass(class_t):
         return class_t
     else:
-        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not a class.")
+        raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a class, but it has the type '{type(class_t).__name__}'.")
 
 def check_subclass(this: Any, subclass_of: Any) -> None:
     if not issubclass(this, subclass_of):
