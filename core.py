@@ -7,8 +7,6 @@ import json
 import os
 import traceback
 
-# TODO: students may use print debugging. make sure that is useful and provides feedback??
-# TODO: the quantity of input to a console interaction may be uncouth to represent as a case title, and instead the entire interaction should be displayed to the student (instead of just "all lines match" or something)
 # TODO: script should not be able to hang if exact console I/O interaction spelled out (possible to see that it's doing a read when we expected end?)
 
 WHERE_THE_RESULTS_GO: str = "results/results.json"
