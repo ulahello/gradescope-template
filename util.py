@@ -3,6 +3,7 @@ from io_trace import Read, Write, LineIter
 
 from importlib.abc import Loader, FileLoader
 from importlib.machinery import ModuleSpec
+from pathlib import PurePath
 from types import ModuleType
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, cast
 import importlib
@@ -91,7 +92,8 @@ def _display_mod_name(mod: Any, fallback: Optional[str]) -> str:
     if hasattr(mod, "__loader__"):
         loader = mod.__loader__
         if isinstance(loader, FileLoader):
-            return f"file '{loader.path}'"
+            path = PurePath(loader.path)
+            return f"file '{path.name}'"
 
     if inspect.isclass(mod):
         return f"class '{mod.__name__}'"
