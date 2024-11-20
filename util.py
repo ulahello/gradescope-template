@@ -179,6 +179,10 @@ def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
     return cmp_ret_seq(op_eq)(expect, actual)
 
 def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
+    # confusing failure is indicative of a bug
+    if not eq:
+        assert expect != actual
+
     output: str = f"{prefix}: "
     if eq:
         output += f"got `{actual}` as expected.\n"
