@@ -1,3 +1,5 @@
+from _generics import *
+
 from io import TextIOWrapper, IOBase, TextIOBase, SEEK_SET
 from typing import List, Tuple, Optional, Iterator, Iterable, Any, Callable, AnyStr, IO, TextIO, BinaryIO, cast
 import sys
@@ -285,7 +287,7 @@ def deinit() -> None:
     stdout = None
     stderr = None
 
-def capture[T](func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Read | Write]]:
+def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Read | Write]]:
     global log, stdin
     assert stdin is not None
 

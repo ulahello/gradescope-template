@@ -5,7 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeVar, TypeAlias, NamedTuple, Generic
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple, Generic
 import ast
 import inspect
 
@@ -98,7 +98,7 @@ class CaseAdHoc(Case):
         (self.runner)(self)
         self.run_post()
 
-    def run_func[T](
+    def run_func(
             self,
             func: Callable[[], T],
             io_queue: List[str] = [],
@@ -168,8 +168,6 @@ class CaseAdHoc(Case):
 
     def format_output(self) -> str:
         return self.output
-
-T = TypeVar("T")
 
 class CaseFunc(CaseIOBase, Generic[T]):
     func: Callable[..., T]

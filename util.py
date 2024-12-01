@@ -1,3 +1,4 @@
+from _generics import *
 from core import AutograderError, Case, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write, LineIter
 
@@ -113,11 +114,11 @@ def nth(rank: int) -> str:
         suffix = "th"
     return f"{rank}{suffix}"
 
-def cmp_ret_nop[X, Y](expect: X, actual: Y) -> bool:
+def cmp_ret_nop(expect: X, actual: Y) -> bool:
     return True
 
-def cmp_ret_epsilon[X: int | float, Y](
-        expect: X, actual: Y,
+def cmp_ret_epsilon(
+        expect: Xnum, actual: Y,
         epsilon: float = 0.00001, # @CHANGEME (or write your own)
 ) -> bool:
     if not isinstance(actual, (int, float)):
@@ -125,14 +126,14 @@ def cmp_ret_epsilon[X: int | float, Y](
     eq: bool = abs(expect - actual) < epsilon
     return eq
 
-def cmp_ret_equ[X, Y](expect: X, actual: Y) -> bool:
+def cmp_ret_equ(expect: X, actual: Y) -> bool:
     eq: bool = expect == actual
     return eq
 
 def is_sequence(obj: Any) -> bool:
     return isinstance(obj, Sequence)
 
-def cmp_ret_seq[X, Y](cmp_elem: Callable[[X, Y], bool]) -> Callable[[Sequence[X], Sequence[Y]], bool]:
+def cmp_ret_seq(cmp_elem: Callable[[X, Y], bool]) -> Callable[[Sequence[X], Sequence[Y]], bool]:
     def inner(expect: Sequence[X], actual: Sequence[Y]) -> bool:
         if not is_sequence(actual):
             return False
@@ -146,7 +147,7 @@ def cmp_ret_seq[X, Y](cmp_elem: Callable[[X, Y], bool]) -> Callable[[Sequence[X]
     return inner
 
 # works with unhashable types!
-def cmp_ret_seq_unordered[X, Ys](expect: Sequence[X], actual: Ys) -> bool:
+def cmp_ret_seq_unordered(expect: Sequence[X], actual: Ys) -> bool:
     if not isinstance(actual, Sequence):
         return False
     if len(expect) != len(actual):
@@ -157,7 +158,7 @@ def cmp_ret_seq_unordered[X, Ys](expect: Sequence[X], actual: Ys) -> bool:
     return True
 
 # works with unhashable types!
-def cmp_ret_seq_freq[X, Ys](expect: Sequence[X], actual: Ys) -> bool:
+def cmp_ret_seq_freq(expect: Sequence[X], actual: Ys) -> bool:
     if not isinstance(actual, Sequence):
         return False
     if len(expect) != len(actual):
@@ -185,7 +186,7 @@ def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
         output += f"expected `{expect}`, but got `{actual}`.\n"
     return output
 
-def fmt_ret[X, Y](expect: X, actual: Y, eq: bool, prefix: str) -> str:
+def fmt_ret(expect: X, actual: Y, eq: bool, prefix: str) -> str:
     return fmt_ret_s(repr(expect), repr(actual), eq, prefix)
 
 def fmt_io_diff(expect: List[Read | Write],
