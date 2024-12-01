@@ -4,7 +4,7 @@ from io_trace import Read, Write, LineIter
 from importlib.abc import Loader
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, cast
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, Type, cast
 import importlib
 import importlib.util as iu
 import inspect
@@ -41,14 +41,14 @@ def get_func(mod: Any, name: str) -> Callable[..., Any]:
     else:
         raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not callable. Is it a function?")
 
-def get_class(mod: Any, name: str) -> type:
+def get_class(mod: Any, name: str) -> Type[Any]:
     class_t = get_attribute(mod, name, f"Could not find class '{name}' in '{mod.__name__}'. Is it defined?")
     if inspect.isclass(class_t):
         return class_t
     else:
         raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not a class.")
 
-def check_subclass(this: Any, subclass_of: Any) -> None:
+def check_subclass(this: Any, subclass_of: Type[Any]) -> None:
     if not issubclass(this, subclass_of):
         raise AutograderError(None, f"'{this.__name__}' must be a subclass of '{subclass_of.__name__}'.")
 
@@ -113,32 +113,27 @@ def nth(rank: int) -> str:
         suffix = "th"
     return f"{rank}{suffix}"
 
-def cmp_ret_nop(expect: Any, actual: Any) -> bool:
+def cmp_ret_nop[X, Y](expect: X, actual: Y) -> bool:
     return True
 
-def cmp_ret_epsilon(expect: Any, actual: Any,
-                    epsilon: float = 0.00001) -> bool: # @CHANGEME (or write your own)
+def cmp_ret_epsilon[X: int | float, Y](
+        expect: X, actual: Y,
+        epsilon: float = 0.00001, # @CHANGEME (or write your own)
+) -> bool:
     if not isinstance(actual, (int, float)):
         return False
     eq: bool = abs(expect - actual) < epsilon
     return eq
 
-def cmp_ret_equ(expect: Any, actual: Any) -> bool:
+def cmp_ret_equ[X, Y](expect: X, actual: Y) -> bool:
     eq: bool = expect == actual
     return eq
 
 def is_sequence(obj: Any) -> bool:
-    for req in [
-            "__getitem__",
-            "__len__",
-    ]:
-        if not hasattr(obj, req):
-            # it's not a sequence! i am weeping!
-            return False
-    return True
+    return isinstance(obj, Sequence)
 
-def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any], Sequence[Any]], bool]:
-    def inner(expect: Sequence[Any], actual: Sequence[Any]) -> bool:
+def cmp_ret_seq[X, Y](cmp_elem: Callable[[X, Y], bool]) -> Callable[[Sequence[X], Sequence[Y]], bool]:
+    def inner(expect: Sequence[X], actual: Sequence[Y]) -> bool:
         if not is_sequence(actual):
             return False
         if len(expect) != len(actual):
@@ -151,8 +146,8 @@ def cmp_ret_seq(cmp_elem: Callable[[Any, Any], bool]) -> Callable[[Sequence[Any]
     return inner
 
 # works with unhashable types!
-def cmp_ret_seq_unordered(expect: Sequence[Any], actual: Any) -> bool:
-    if not is_sequence(actual):
+def cmp_ret_seq_unordered[X, Ys](expect: Sequence[X], actual: Ys) -> bool:
+    if not isinstance(actual, Sequence):
         return False
     if len(expect) != len(actual):
         return False
@@ -162,8 +157,8 @@ def cmp_ret_seq_unordered(expect: Sequence[Any], actual: Any) -> bool:
     return True
 
 # works with unhashable types!
-def cmp_ret_seq_freq(expect: Sequence[Any], actual: Any) -> bool:
-    if not is_sequence(actual):
+def cmp_ret_seq_freq[X, Ys](expect: Sequence[X], actual: Ys) -> bool:
+    if not isinstance(actual, Sequence):
         return False
     if len(expect) != len(actual):
         return False
@@ -190,12 +185,12 @@ def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
         output += f"expected `{expect}`, but got `{actual}`.\n"
     return output
 
-def fmt_ret(expect: Any, actual: Any, eq: bool, prefix: str) -> str:
+def fmt_ret[X, Y](expect: X, actual: Y, eq: bool, prefix: str) -> str:
     return fmt_ret_s(repr(expect), repr(actual), eq, prefix)
 
 def fmt_io_diff(expect: List[Read | Write],
-               actual: List[Read | Write],
-               passed: bool) -> str:
+                actual: List[Read | Write],
+                passed: bool) -> str:
     def fmt_line(line: int, msg: str, context: Optional[str] = None) -> str:
         out = f"Console line {line}"
         if context is not None:

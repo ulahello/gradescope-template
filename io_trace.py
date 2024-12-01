@@ -285,7 +285,7 @@ def deinit() -> None:
     stdout = None
     stderr = None
 
-def capture(func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, List[Read | Write]]:
+def capture[T](func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Read | Write]]:
     global log, stdin
     assert stdin is not None
 
@@ -294,7 +294,7 @@ def capture(func: Callable[[], Any], io_queue: List[str] = []) -> Tuple[Any, Lis
     # freshly provide queue of stdin reads
     stdin.inner.swap_queue(io_queue) # type: ignore[attr-defined]
 
-    ret: Any = func() # @raise
+    ret: T = func() # @raise
 
     # save i/o log
     io_log: List[Read | Write] = log.ls

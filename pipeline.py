@@ -17,9 +17,6 @@ class EarlyReturn(Exception):
     pass
 
 class CasePipeline(CaseAdHoc):
-    GoldenObj = TypeVar("GoldenObj")
-    TestObj = TypeVar("TestObj")
-
     varname: str
     in_code: bool
 
@@ -42,7 +39,7 @@ class CasePipeline(CaseAdHoc):
         self.finish_step_log(joy=False)
         self.run_post()
 
-    def catch(self, f: Callable[[], Any]) -> Tuple[Any, List[Read | Write]]:
+    def catch[T](self, f: Callable[[], T]) -> Tuple[T, List[Read | Write]]:
         try:
             return io_trace.capture(f)
         except Exception as e:
@@ -102,12 +99,14 @@ class CasePipeline(CaseAdHoc):
 
         raise EarlyReturn
 
-    def init(self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
-             args_test: Optional[Tuple[Any, ...]] = None,
-             cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-             fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
-             varname: Optional[str] = None,
-             args_override: Optional[Iterable[str]] = None) -> Tuple[GoldenObj, TestObj]:
+    def init[GoldenObj, TestObj](
+            self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
+            args_test: Optional[Tuple[Any, ...]] = None,
+            cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+            fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
+            varname: Optional[str] = None,
+            args_override: Optional[Iterable[str]] = None,
+    ) -> Tuple[GoldenObj, TestObj]:
         if varname is None:
             varname = self.varname
         expr: str = f"{test_t.__name__}{fmt_args_overridable(args, args_override)}"
@@ -121,19 +120,21 @@ class CasePipeline(CaseAdHoc):
             cmp_io=cmp_io, fmt_io=fmt_io,
         )
 
-    def method(self, golden: GoldenObj, golden_f: Callable[..., Any],
-               test: TestObj, test_f: Callable[..., Any],
-               args: Tuple[Any, ...] = (),
-               args_test: Optional[Tuple[Any, ...]] = None,
-               cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
-               repr_ret: Callable[[Any], str] = repr,
-               describe_ret: str = "Return value",
-               cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-               fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
-               varname: Optional[str] = None,
-               assign_to: Optional[str] = None,
-               args_override: Optional[Iterable[str]] = None,
-               expr_override: Optional[str] = None) -> Tuple[Any, Any]:
+    def method[GoldenObj, GoldenRet, TestObj, TestRet](
+            self, golden: GoldenObj, golden_f: Callable[..., GoldenRet],
+            test: TestObj, test_f: Callable[..., TestRet],
+            args: Tuple[Any, ...] = (),
+            args_test: Optional[Tuple[Any, ...]] = None,
+            cmp_ret: Callable[[GoldenRet, TestRet], bool] = cmp_ret_equ,
+            repr_ret: Callable[[GoldenRet | TestRet], str] = repr,
+            describe_ret: str = "Return value",
+            cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+            fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
+            varname: Optional[str] = None,
+            assign_to: Optional[str] = None,
+            args_override: Optional[Iterable[str]] = None,
+            expr_override: Optional[str] = None,
+    ) -> Tuple[GoldenRet, TestRet]:
         if varname is None:
             varname = self.varname
         expr: str
@@ -154,18 +155,20 @@ class CasePipeline(CaseAdHoc):
             expr_override=expr,
         )
 
-    def funcall(self,
-                golden_f: Callable[..., Any], test_f: Callable[..., Any],
-                args: Tuple[Any, ...] = (),
-                args_test: Optional[Tuple[Any, ...]] = None,
-                cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
-                repr_ret: Callable[[Any], str] = repr,
-                describe_ret: str = "Return value",
-                cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
-                fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
-                assign_to: Optional[str] = None,
-                args_override: Optional[Iterable[str]] = None,
-                expr_override: Optional[str] = None) -> Tuple[Any, Any]:
+    def funcall[GoldenRet, TestRet](
+            self,
+            golden_f: Callable[..., GoldenRet], test_f: Callable[..., TestRet],
+            args: Tuple[Any, ...] = (),
+            args_test: Optional[Tuple[Any, ...]] = None,
+            cmp_ret: Callable[[GoldenRet, TestRet], bool] = cmp_ret_equ,
+            repr_ret: Callable[[GoldenRet | TestRet], str] = repr,
+            describe_ret: str = "Return value",
+            cmp_io: Callable[[List[Read | Write], List[Read | Write]], bool] = cmp_io_equ,
+            fmt_io: Callable[[List[Read | Write], List[Read | Write], bool], str] = fmt_io_diff,
+            assign_to: Optional[str] = None,
+            args_override: Optional[Iterable[str]] = None,
+            expr_override: Optional[str] = None,
+    ) -> Tuple[GoldenRet, TestRet]:
         self.start_step_log()
         expr: str
         if expr_override is None:
