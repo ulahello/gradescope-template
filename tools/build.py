@@ -6,7 +6,7 @@ import shutil
 import sys
 import zipfile
 
-from typing import List, Optional, NoReturn, Tuple
+from typing import List, Optional, NoReturn, Tuple, Set
 
 def fatal(msg: str) -> NoReturn:
     print(f"Error: {msg}", file=sys.stderr)
@@ -46,21 +46,24 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, leve
         zf.writestr(det_zipinfo(path.name, algo, level), file_data)
         info(f"added source '{path.name}'")
 
-    # add sources from script_dir
-    script_dir_sources = [
+    to_add: Set[str | PurePath] = {
         "setup.sh",
         "run_autograder",
-    ]
+    }
+
+    # queue all python source code
     for entry in os.scandir(script_dir):
         if entry.name.endswith(".py") and entry.is_file():
-            script_dir_sources.append(entry.name)
+            to_add.add(entry.name)
 
-    for name in script_dir_sources:
+    # queue all files in SOURCES
+    for fname in sources:
+        to_add.add(fname)
+
+    # make queue real
+    for name in to_add:
         path = PurePath(script_dir, name)
         add_file_contents(zf, path, algo, level)
-
-    # we don't add SOURCES, because they should already be copied into
-    # the script directory by populate.sh.
 
 assert get_zip_name("script_foo.whatever") == "zip_foo.zip"
 assert get_zip_name("script_unit_section_exercise.py") == "zip_unit_section_exercise.zip"
