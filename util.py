@@ -32,53 +32,30 @@ class LoadSummary:
         self.returns = []
         self.summarized = False
 
-    def get_attribute(self, obj: Any, attr: str, msg: str) -> Any:
-        if obj is _stub:
+    def _shape(self, f: Callable[..., T], args: Tuple[Any, ...]) -> T:
+        assert not self.summarized, "called LoadSummary.[get | check] after calling summarize()"
+        if args[0] is _stub:
             assert 0 < len(self.errors)
         else:
             try:
-                ret = _get_attribute(obj, attr, msg)
+                ret = f(*args)
                 self.returns.append(ret)
                 return ret
             except AutograderError as e:
                 self.errors.append(e)
-        return _stub
+        return cast(T, _stub)
+
+    def get_attribute(self, obj: Any, attr: str, msg: str) -> Any:
+        return self._shape(_get_attribute, (obj, attr, msg))
 
     def get_func(self, mod: Any, name: str) -> Callable[..., Any]:
-        if mod is _stub:
-            assert 0 < len(self.errors)
-        else:
-            try:
-                ret = _get_func(mod, name)
-                self.returns.append(ret)
-                return ret
-            except AutograderError as e:
-                self.errors.append(e)
-        return _stub
+        return self._shape(_get_func, (mod, name))
 
     def get_class(self, mod: Any, name: str) -> Type[Any]:
-        if mod is _stub:
-            assert 0 < len(self.errors)
-        else:
-            try:
-                ret = _get_class(mod, name)
-                self.returns.append(ret)
-                return ret
-            except AutograderError as e:
-                self.errors.append(e)
-        return _stub
+        return self._shape(_get_class, (mod, name))
 
     def check_subclass(self, this: Any, subclass_of: Any) -> Optional[Type[_stub]]:
-        if this is _stub:
-            assert 0 < len(self.errors)
-        else:
-            try:
-                ret: None = _check_subclass(this, subclass_of) # type: ignore[func-returns-value]
-                self.returns.append(ret)
-                return ret
-            except AutograderError as e:
-                self.errors.append(e)
-        return _stub
+        return self._shape(_check_subclass, (this, subclass_of))
 
     def summarize(self) -> None:
         self.summarized = True
