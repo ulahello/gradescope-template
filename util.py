@@ -200,6 +200,8 @@ def fmt_io_diff(expect: List[Read | Write],
         out += f": {msg}\n"
         return out
 
+    # TODO: specialize for output nearly correct, but whitespace differs
+
     output: str = ""
 
     if passed and len(expect) != 0:
