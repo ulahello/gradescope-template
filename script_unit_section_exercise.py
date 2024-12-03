@@ -19,6 +19,8 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
     # AutograderErrors are presented to the student and should be
     # raised if the submission is invalid and cannot be tested.
 
+    l: LoadSummary = LoadSummary()
+
     ############# @CHANGEME #############
 
     cases: List[Case] = [
@@ -26,6 +28,7 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
 
     #####################################
 
+    assert l.summarized, "unreachable: don't forget to call LoadSummary.summarize() before using loaded definitions"
     return cases
 
 if __name__ == "__main__":
