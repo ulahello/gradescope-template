@@ -2,8 +2,9 @@ from _generics import *
 from core import AutograderError, Case, WHERE_THE_SUBMISSION_IS
 from io_trace import Read, Write, LineIter
 
-from importlib.abc import Loader
+from importlib.abc import Loader, FileLoader
 from importlib.machinery import ModuleSpec
+from pathlib import PurePath
 from types import ModuleType
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, Type, cast
 import importlib
@@ -13,8 +14,81 @@ import itertools
 import json
 import os
 
-# TODO: would be nice to be able to check all expected attributes in one sweep and present all errors to student, rather than one-by-one (good compilers will do this, it is nice)
 # TODO: expected attributes are sometimes specific to test cases, so presenting this in SummaryBad is more restrictive than strictly necessary
+
+# used instead of None to indicate that "the thing could not be
+# loaded, but we continue because that's what a summary is" for easier
+# time with type checking script_*.py
+class _stub:
+    pass
+
+class LoadSummary:
+    errors: List[AutograderError]
+    returns: List[Type[_stub] | Any]
+
+    def __init__(self) -> None:
+        self.errors = []
+        self.returns = []
+
+    def get_attribute(self, obj: Any, attr: str, msg: str) -> Any:
+        if obj is _stub:
+            assert 0 < len(self.errors)
+        else:
+            try:
+                ret = _get_attribute(obj, attr, msg)
+                self.returns.append(ret)
+                return ret
+            except AutograderError as e:
+                self.errors.append(e)
+        return _stub
+
+    def get_func(self, mod: Any, name: str) -> Callable[..., Any]:
+        if mod is _stub:
+            assert 0 < len(self.errors)
+        else:
+            try:
+                ret = _get_func(mod, name)
+                self.returns.append(ret)
+                return ret
+            except AutograderError as e:
+                self.errors.append(e)
+        return _stub
+
+    def get_class(self, mod: Any, name: str) -> Type[Any]:
+        if mod is _stub:
+            assert 0 < len(self.errors)
+        else:
+            try:
+                ret = _get_class(mod, name)
+                self.returns.append(ret)
+                return ret
+            except AutograderError as e:
+                self.errors.append(e)
+        return _stub
+
+    def check_subclass(self, this: Any, subclass_of: Any) -> Optional[Type[_stub]]:
+        if this is _stub:
+            assert 0 < len(self.errors)
+        else:
+            try:
+                ret: None = _check_subclass(this, subclass_of) # type: ignore[func-returns-value]
+                self.returns.append(ret)
+                return ret
+            except AutograderError as e:
+                self.errors.append(e)
+        return _stub
+
+    def summarize(self) -> None:
+        msg: str = f"# Issues\n"
+        for error in self.errors:
+            msg += f"- {error.msg}\n"
+            assert error.inner is None
+        if len(self.errors):
+            raise AutograderError(None, msg)
+        else:
+            # there should be no errors! assert all definitions are loaded.
+            for idx, ret in enumerate(self.returns):
+                assert ret is not _stub, f"unreachable: missing definition {idx=} but no errors indicated"
 
 def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: # -> (extra, missing)
     attrs: Set[str]
@@ -26,7 +100,7 @@ def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: #
     missing = required.difference(attrs)
     return extra, missing
 
-def get_attribute(obj: Any, attr: str, msg: str) -> Any:
+def _get_attribute(obj: Any, attr: str, msg: str) -> Any:
     try:
         thing = getattr(obj, attr)
     except AttributeError as e:
@@ -36,21 +110,37 @@ def get_attribute(obj: Any, attr: str, msg: str) -> Any:
         raise AutograderError(None, msg)
     return thing
 
-def get_func(mod: Any, name: str) -> Callable[..., Any]:
-    func = get_attribute(mod, name, f"Could not find function '{name}' in '{mod.__name__}'. Is it defined?")
+def _display_mod_name(mod: Any, fallback: Optional[str]) -> str:
+    if hasattr(mod, "__loader__"):
+        loader = mod.__loader__
+        if isinstance(loader, FileLoader):
+            path = PurePath(loader.path)
+            return f"file '{path.name}'"
+
+    if inspect.isclass(mod):
+        return f"class '{mod.__name__}'"
+
+    if fallback is None:
+        fallback = mod.__name__
+    return f"'{fallback}'"
+
+def _get_func(mod: Any, name: str, mod_name: Optional[str] = None) -> Callable[..., Any]:
+    mod_name = _display_mod_name(mod, mod_name)
+    func = _get_attribute(mod, name, f"Could not find function '{name}' in {mod_name}.")
     if callable(func):
         return func # type: ignore
     else:
-        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not callable. Is it a function?")
+        raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a function, but it has the type '{type(func).__name__}'.")
 
-def get_class(mod: Any, name: str) -> Type[Any]:
-    class_t = get_attribute(mod, name, f"Could not find class '{name}' in '{mod.__name__}'. Is it defined?")
+def _get_class(mod: Any, name: str, mod_name: Optional[str] = None) -> Type[Any]:
+    mod_name = _display_mod_name(mod, mod_name)
+    class_t = _get_attribute(mod, name, f"Could not find class '{name}' in {mod_name}.")
     if inspect.isclass(class_t):
         return class_t
     else:
-        raise AutograderError(None, f"Found '{name}' in '{mod.__name__}', but it is not a class.")
+        raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a class, but it has the type '{type(class_t).__name__}'.")
 
-def check_subclass(this: Any, subclass_of: Type[Any]) -> None:
+def _check_subclass(this: Any, subclass_of: Type[Any]) -> None:
     if not issubclass(this, subclass_of):
         raise AutograderError(None, f"'{this.__name__}' must be a subclass of '{subclass_of.__name__}'.")
 
@@ -76,7 +166,6 @@ def load_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
 def run_script(fname: str) -> Tuple[ModuleType, ModuleSpec]:
     global submission_number
     submission_number += 1
-    # TODO: don't make up module name, show the filename
     modname = f"student_submission_{submission_number}" # just want a unique module name that isn't insane
 
     location = f"{WHERE_THE_SUBMISSION_IS}/{fname}"
