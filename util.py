@@ -25,10 +25,12 @@ class _stub:
 class LoadSummary:
     errors: List[AutograderError]
     returns: List[Type[_stub] | Any]
+    summarized: bool
 
     def __init__(self) -> None:
         self.errors = []
         self.returns = []
+        self.summarized = False
 
     def get_attribute(self, obj: Any, attr: str, msg: str) -> Any:
         if obj is _stub:
@@ -79,6 +81,7 @@ class LoadSummary:
         return _stub
 
     def summarize(self) -> None:
+        self.summarized = True
         msg: str = f"# Issues\n"
         for error in self.errors:
             msg += f"- {error.msg}\n"
