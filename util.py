@@ -178,7 +178,7 @@ def cmp_io_equ(expect: List[Read | Write], actual: List[Read | Write]) -> bool:
 def fmt_ret_s(expect: str, actual: str, eq: bool, prefix: str) -> str:
     # confusing failure is indicative of a bug
     if not eq:
-        assert expect != actual
+        assert expect != actual, "unreachable: values are supposedly not equal, however their strings are the same!"
 
     output: str = f"{prefix}: "
     if eq:
