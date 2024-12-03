@@ -273,7 +273,7 @@ class SummaryGood:
                     "visibility": "visible",
                 })
 
-        self.output += f"{self.num_passed_visible}/{self.num_visible} visible test(s) passed.\n"
+        self.output += f"{self.num_passed_visible}/{self.num_visible} visible tests passed.\n"
 
         # compute score: all or nothing
         if all_passed:
