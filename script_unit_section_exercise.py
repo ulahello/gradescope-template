@@ -11,7 +11,7 @@ import io_trace
 from typing import Dict, List, Any, Optional, Callable
 import random
 
-def get_test_cases(metadata: Dict[str, Any]) -> List[Case]:
+def get_test_cases(metadata: JsonMetadata) -> List[Case]:
     # Submission metadata is there if you want it. If not, that's fine!
 
     # REMINDER: Raising any exception other than AutograderError

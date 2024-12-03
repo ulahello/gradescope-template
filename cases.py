@@ -5,7 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple, Generic
 import ast
 import inspect
 
@@ -98,10 +98,12 @@ class CaseAdHoc(Case):
         (self.runner)(self)
         self.run_post()
 
-    def run_func(self,
-                 func: Callable[[], Any],
-                 io_queue: List[str] = [],
-                 msg: str = "An exception was raised while running a student function.") -> Tuple[Any, List[Read | Write]]:
+    def run_func(
+            self,
+            func: Callable[[], T],
+            io_queue: List[str] = [],
+            msg: str = "An exception was raised while running a student function.",
+    ) -> Tuple[T, List[Read | Write]]:
         try:
             ret, io_log = io_trace.capture(func, io_queue=io_queue)
         except Exception as e:
@@ -167,21 +169,21 @@ class CaseAdHoc(Case):
     def format_output(self) -> str:
         return self.output
 
-class CaseFunc(CaseIOBase):
-    func: Callable[..., Any]
+class CaseFunc(CaseIOBase, Generic[T]):
+    func: Callable[..., T]
     args: Tuple[Any, ...]
     cmp_ret: Callable[[Any, Any], bool]
-    ret_expect: Any
-    ret_actual: Any
+    ret_expect: Optional[T]
+    ret_actual: Optional[T]
     ret_passed: Optional[bool]
 
     def __init__(self,
                  visible: bool,
-                 func: Callable[..., Any],
+                 func: Callable[..., T],
                  name: str,
                  warning: bool = False,
                  args: Tuple[Any, ...] = (),
-                 ret_expect: Any = None,
+                 ret_expect: Optional[T] = None,
                  cmp_ret: Callable[[Any, Any], bool] = cmp_ret_equ,
                  io_queue: List[str] = [],
                  io_expect: List[Read | Write] = [],

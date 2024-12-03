@@ -1,7 +1,7 @@
 from io import StringIO
 from pathlib import PurePath
 from traceback import FrameSummary
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, cast
+from typing import Union, Literal, List, Any, Optional, Callable, Tuple, Dict, Set, Sequence, Iterable, TypedDict, TypeAlias, cast
 import inspect
 import json
 import os
@@ -11,7 +11,105 @@ import traceback
 
 WHERE_THE_RESULTS_GO: str = "results/results.json"
 WHERE_THE_SUBMISSION_IS: str = "submission"
-OUTPUT_FORMAT: str = "md"
+OUTPUT_FORMAT: "JsonOutputFormat" = "md"
+
+JsonOutputFormat: TypeAlias = Union[
+    Literal["text"],
+    Literal["html"],
+    Literal["simple_format"],
+    Literal["md"],
+    Literal["ansi"],
+]
+
+JsonStatus: TypeAlias = Union[
+    Literal["passed"],
+    Literal["failed"],
+]
+
+JsonVisibility: TypeAlias = Union[
+    Literal["visible"],
+    Literal["hidden"],
+    Literal["after_due_date"],
+]
+
+JsonSummary: TypedDict = TypedDict(
+    "JsonSummary",
+    {
+        "score": float,
+        "execution_time": int,
+        "output": str,
+        "output_format": JsonOutputFormat,
+        "test_name_format": JsonOutputFormat,
+        "visibility": JsonVisibility,
+        "stdout_visibility": JsonVisibility,
+        "extra_data": Dict[str, Any],
+        "tests": List["JsonTestCase"],
+    },
+    total=False,
+)
+
+JsonTestCase: TypedDict = TypedDict(
+    "JsonTestCase",
+    {
+        "score": float,
+        "max_score": float,
+        "status": JsonStatus,
+        "name": str,
+        "name_format": str,
+        "number": str,
+        "output": str,
+        "output_format": JsonOutputFormat,
+        "tags": List[str],
+        "visibility": str,
+        "extra_data": Dict[str, Any],
+    },
+    total=False,
+)
+
+JsonMetadataAssignment: TypedDict = TypedDict(
+    "JsonMetadataAssignment",
+    {
+        "due_date": str,
+        "group_size": int,
+        "group_submission": bool,
+        "id": int,
+        "course_id": int,
+        "late_due_date": Optional[str],
+        "release_date": str,
+        "title": str,
+        "total_points": float,
+    },
+)
+
+JsonMetadataUser: TypedDict = TypedDict(
+    "JsonMetadataUser",
+    {
+        "email": str,
+        "id": int,
+        "name": str,
+    },
+)
+
+JsonMetadataPrevious: TypedDict = TypedDict(
+    "JsonMetadataPrevious",
+    {
+        "submission_time": str,
+        "score": float,
+        "results": "JsonMetadata",
+    },
+)
+
+JsonMetadata: TypedDict = TypedDict(
+    "JsonMetadata",
+    {
+        "id": int,
+        "created_at": str,
+        "assignment": JsonMetadataAssignment,
+        "submission_method": Literal["upload"] | Literal["GitHub"] | Literal["BitBucket"],
+        "users": List[JsonMetadataUser],
+        "previous_submissions": List[JsonMetadataPrevious],
+    },
+)
 
 class AutograderError(Exception):
     msg: str
@@ -36,6 +134,7 @@ def format_traceback(payload: Exception) -> str:
         while tb is not None:
             tb_info = inspect.getframeinfo(tb)
             tb = tb.tb_next
+            # TODO: absolute path of student submission pulls back curtain on gradescope directory hierarchy
             if frame_predicate(tb_info.filename):
                 break
             else:
@@ -115,13 +214,13 @@ class SummaryGood:
     max_score: float
     score: float
 
-    tests: List[Dict[str, Any]]
+    tests: List[JsonTestCase]
     num_visible: int
     num_passed_visible: int
     num_scored: int
     num_passed_scored: int
 
-    def __init__(self, tests: List[Dict[str, Any]], max_score: float) -> None:
+    def __init__(self, tests: List[JsonTestCase], max_score: float) -> None:
         self.output = ""
 
         self.max_score = max_score
@@ -175,7 +274,7 @@ class SummaryGood:
                     "visibility": "visible",
                 })
 
-        self.output += f"{self.num_passed_visible}/{self.num_visible} visible test(s) passed.\n"
+        self.output += f"{self.num_passed_visible}/{self.num_visible} visible tests passed.\n"
 
         # compute score: all or nothing
         if all_passed:
@@ -217,14 +316,16 @@ class SummaryBad:
 
     def write_to_results(self) -> None:
         with open(WHERE_THE_RESULTS_GO, "w") as f:
-            f.write(json.dumps({
+            summary: JsonSummary = {
                 "score": self.score,
                 "output": self.output_f.getvalue(),
                 "output_format": OUTPUT_FORMAT,
                 "stdout_visibility": "visible",
-            }))
+            }
 
-def run_test_cases(cases: List[Case]) -> List[Dict[str, Any]]:
+            f.write(json.dumps(summary))
+
+def run_test_cases(cases: List[Case]) -> List[JsonTestCase]:
     tests = []
     for i, case in enumerate(cases):
         passed: bool
@@ -238,8 +339,8 @@ def run_test_cases(cases: List[Case]) -> List[Dict[str, Any]]:
             passed = False
             output = format_traceback(e)
 
-        status = "passed" if passed else "failed"
-        test_info: Dict[str, Any] = {
+        status: JsonStatus = "passed" if passed else "failed"
+        test_info: JsonTestCase = {
             "name": case.name,
             "status": status,
             "output": f"{output}",
@@ -259,13 +360,15 @@ def run_test_cases(cases: List[Case]) -> List[Dict[str, Any]]:
     return tests
 
 
-def load_submission_metadata() -> Dict[str, Any]:
+def load_submission_metadata() -> JsonMetadata:
     with open("submission_metadata.json", "r") as f:
         s = f.read()
         metadata: Dict[str, Any] = json.loads(s)
-        return metadata
 
-def autograder_main(get_test_cases: Callable[[Dict[str, Any]], List[Case]]) -> None:
+        # HACK: does not check validity. not a clear way to do this in stdlib
+        return cast(JsonMetadata, metadata)
+
+def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]]) -> None:
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
@@ -280,7 +383,7 @@ def autograder_main(get_test_cases: Callable[[Dict[str, Any]], List[Case]]) -> N
     max_score: float = float(metadata["assignment"]["total_points"])
 
     # run the test cases!
-    tests: List[Dict[str, Any]] = run_test_cases(cases)
+    tests: List[JsonTestCase] = run_test_cases(cases)
     # how did they go?
     summary: SummaryGood = SummaryGood(tests, max_score=max_score)
 
