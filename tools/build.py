@@ -61,7 +61,9 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, leve
         to_add.add(fname)
 
     # make queue real
-    for name in to_add:
+    to_add_ordered: List[str | PurePath] = list(to_add)
+    to_add_ordered.sort()
+    for name in to_add_ordered:
         path = PurePath(script_dir, name)
         add_file_contents(zf, path, algo, level)
 
