@@ -100,6 +100,11 @@ class CasePipeline(CaseAdHoc):
 
         raise EarlyReturn
 
+    def comment(self, msg: str) -> None:
+        self.start_step_log()
+        for line in msg.splitlines():
+            self.print(f">>> # {line}", new_line=True)
+
     def init(
             self, golden_t: Type[GoldenObj], test_t: Type[TestObj], args: Tuple[Any, ...],
             args_test: Optional[Tuple[Any, ...]] = None,
