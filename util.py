@@ -14,6 +14,7 @@ import json
 import os
 
 # TODO: would be nice to be able to check all expected attributes in one sweep and present all errors to student, rather than one-by-one (good compilers will do this, it is nice)
+# TODO: expected attributes are sometimes specific to test cases, so presenting this in SummaryBad is more restrictive than strictly necessary
 
 def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: # -> (extra, missing)
     attrs: Set[str]
