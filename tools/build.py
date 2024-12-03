@@ -58,7 +58,12 @@ def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, leve
 
     # queue all files in SOURCES
     for fname in sources:
-        to_add.add(fname)
+        # base names in the script directory take precedence over
+        # paths with the same base in SOURCES
+        if not PurePath(fname).name in to_add:
+            to_add.add(fname)
+        else:
+            info(f"skipping source '{fname}', already present in script directory")
 
     # make queue real
     to_add_ordered: List[str | PurePath] = list(to_add)
