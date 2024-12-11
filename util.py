@@ -6,7 +6,7 @@ from importlib.abc import Loader, FileLoader
 from importlib.machinery import ModuleSpec
 from pathlib import PurePath
 from types import ModuleType
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, Type, cast
+from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Hashable, Type, TypeAlias, cast
 import importlib
 import importlib.util as iu
 import inspect
@@ -15,6 +15,8 @@ import json
 import os
 
 # TODO: expected attributes are sometimes specific to test cases, so presenting this in SummaryBad is more restrictive than strictly necessary
+
+ModuleLike: TypeAlias = ModuleType | Type[Any]
 
 # used instead of None to indicate that "the thing could not be
 # loaded, but we continue because that's what a summary is" for easier
@@ -48,13 +50,13 @@ class LoadSummary:
     def get_attribute(self, obj: Any, attr: str, msg: str) -> Any:
         return self._shape(_get_attribute, (obj, attr, msg))
 
-    def get_func(self, mod: Any, name: str) -> Callable[..., Any]:
+    def get_func(self, mod: ModuleLike, name: str) -> Callable[..., Any]:
         return self._shape(_get_func, (mod, name))
 
-    def get_class(self, mod: Any, name: str) -> Type[Any]:
+    def get_class(self, mod: ModuleLike, name: str) -> Type[Any]:
         return self._shape(_get_class, (mod, name))
 
-    def check_subclass(self, this: Any, subclass_of: Any) -> Optional[Type[_stub]]:
+    def check_subclass(self, this: Type[Any], subclass_of: Type[Any]) -> Optional[Type[_stub]]:
         return self._shape(_check_subclass, (this, subclass_of))
 
     def summarize(self) -> None:
@@ -90,7 +92,7 @@ def _get_attribute(obj: Any, attr: str, msg: str) -> Any:
         raise AutograderError(None, msg)
     return thing
 
-def _display_mod_name(mod: Any, fallback: Optional[str]) -> str:
+def _display_mod_name(mod: ModuleLike, fallback: Optional[str]) -> str:
     if hasattr(mod, "__loader__"):
         loader = mod.__loader__
         if isinstance(loader, FileLoader):
@@ -104,7 +106,7 @@ def _display_mod_name(mod: Any, fallback: Optional[str]) -> str:
         fallback = mod.__name__
     return f"'{fallback}'"
 
-def _get_func(mod: Any, name: str, mod_name: Optional[str] = None) -> Callable[..., Any]:
+def _get_func(mod: ModuleLike, name: str, mod_name: Optional[str] = None) -> Callable[..., Any]:
     mod_name = _display_mod_name(mod, mod_name)
     func = _get_attribute(mod, name, f"Could not find function '{name}' in {mod_name}.")
     if callable(func):
@@ -112,7 +114,7 @@ def _get_func(mod: Any, name: str, mod_name: Optional[str] = None) -> Callable[.
     else:
         raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a function, but it has the type '{type(func).__name__}'.")
 
-def _get_class(mod: Any, name: str, mod_name: Optional[str] = None) -> Type[Any]:
+def _get_class(mod: ModuleLike, name: str, mod_name: Optional[str] = None) -> Type[Any]:
     mod_name = _display_mod_name(mod, mod_name)
     class_t = _get_attribute(mod, name, f"Could not find class '{name}' in {mod_name}.")
     if inspect.isclass(class_t):
@@ -120,7 +122,7 @@ def _get_class(mod: Any, name: str, mod_name: Optional[str] = None) -> Type[Any]
     else:
         raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a class, but it has the type '{type(class_t).__name__}'.")
 
-def _check_subclass(this: Any, subclass_of: Type[Any]) -> None:
+def _check_subclass(this: Type[Any], subclass_of: Type[Any]) -> None:
     if not issubclass(this, subclass_of):
         raise AutograderError(None, f"'{this.__name__}' must be a subclass of '{subclass_of.__name__}'.")
 
