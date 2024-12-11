@@ -33,17 +33,20 @@ def get_zip_name(script_name: str) -> str:
     new_name: str = "zip_" + script_name.removeprefix("script_")
     return PurePath(script_name).with_name(new_name).with_suffix(".zip").name
 
-def det_zipinfo(filename: str, algo: int, level: int) -> ZipInfo:
-    info = ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+
+def det_zip_add(zf: ZipFile, path: PurePath, file_data: str, algo: int, level: int) -> None:
+    info = ZipInfo(path.name, date_time=(1980, 1, 1, 0, 0, 0))
     info.compress_type = algo
-    # XXX: can't set compression level? also why do i have to specify algo here if i already do for the whole ZipFile?? maybe i should read the ZIP spec
-    return info
+    # weird api design that prior to 3.13 compresslevel and
+    # compress_type had to be passed in separate places (as they are
+    # here) to do this
+    zf.writestr(info, file_data, compresslevel=level)
 
 def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, level: int) -> None:
     def add_file_contents(zf: ZipFile, path: PurePath, algo: int, level: int) -> None:
         with open(path, "r") as f:
             file_data = f.read()
-        zf.writestr(det_zipinfo(path.name, algo, level), file_data)
+        det_zip_add(zf, path, file_data, algo, level)
         info(f"added source '{path.name}'")
 
     to_add: Set[str | PurePath] = {
