@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 
+# TODO: what if dir exists in script dir but not respective files, so populate skips the whole thing
+
 from typing import List, Optional, NoReturn, Tuple
 
 def fatal(msg: str) -> NoReturn:
