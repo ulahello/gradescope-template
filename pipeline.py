@@ -8,6 +8,8 @@ import io_trace
 from io import StringIO
 from typing import List, Optional, Tuple, Any, Callable, Type, Set, Iterable, cast
 
+# TODOO: enforce golden/test clumping and consistent variable names thru type system
+
 def fmt_args_overridable(args: Tuple[Any, ...], override: Optional[Iterable[str]]) -> str:
     if override is None:
         return fmt_args(args)
