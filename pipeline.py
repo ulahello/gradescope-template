@@ -7,6 +7,7 @@ import io_trace
 
 from io import StringIO
 from typing import List, Optional, Tuple, Any, Callable, Type, Set, Iterable, cast
+from typing_extensions import Unpack # TODO: Unpack ∉ 3.10 typing, can use fedora 38 to get 3.11
 
 # TODOO: enforce golden/test clumping and consistent variable names thru type system
 
@@ -122,17 +123,18 @@ class CasePipeline(CaseAdHoc):
         if args_test is None:
             args_test = args
         return self.funcall(
-            golden_f=lambda: golden_t(*args_golden), test_f=lambda: test_t(*args_test),
+            golden_f=golden_t, test_f=test_t,
+            args_golden=args_golden, args_test=args_test,
             assign_to=varname, expr_override=expr,
             cmp_ret=cmp_ret_nop,
             cmp_io=cmp_io, fmt_io=fmt_io,
         )
 
     def method(
-            self, golden: GoldenObj, golden_f: Callable[..., GoldenRet],
-            test: TestObj, test_f: Callable[..., TestRet],
-            args: Tuple[Any, ...] = (),
-            args_test: Optional[Tuple[Any, ...]] = None,
+            self, golden: GoldenObj, golden_f: Callable[[GoldenObj, Unpack[GoldenArgs]], GoldenRet],
+            test: TestObj, test_f: Callable[[TestObj, Unpack[TestArgs]], TestRet],
+            args_golden: Tuple[Unpack[GoldenArgs]],
+            args_test: Optional[Tuple[Unpack[TestArgs]]] = None,
             cmp_ret: Callable[[GoldenRet, TestRet], bool] = cmp_ret_equ,
             repr_ret: Callable[[GoldenRet | TestRet], str] = repr,
             describe_ret: str = "Return value",
@@ -147,15 +149,15 @@ class CasePipeline(CaseAdHoc):
             varname = self.varname
         expr: str
         if expr_override is None:
-            expr = f"{varname}.{test_f.__name__}{fmt_args_overridable(args, args_override)}"
+            expr = f"{varname}.{test_f.__name__}{fmt_args_overridable(args_golden, args_override)}"
         else:
             expr = expr_override
-        args_golden = args
         if args_test is None:
-            args_test = args
+            # HACK: we expect that where args_test is expected, args_golden can be used
+            args_test = cast(Tuple[Unpack[TestArgs]], args_golden)
         return self.funcall(
             golden_f=golden_f, test_f=test_f,
-            args=(golden, *args_golden),
+            args_golden=(golden, *args_golden),
             args_test=(test, *args_test),
             cmp_ret=cmp_ret, repr_ret=repr_ret, describe_ret=describe_ret,
             cmp_io=cmp_io, fmt_io=fmt_io,
@@ -165,9 +167,10 @@ class CasePipeline(CaseAdHoc):
 
     def funcall(
             self,
-            golden_f: Callable[..., GoldenRet], test_f: Callable[..., TestRet],
-            args: Tuple[Any, ...] = (),
-            args_test: Optional[Tuple[Any, ...]] = None,
+            golden_f: Callable[[Unpack[GoldenArgs]], GoldenRet],
+            test_f: Callable[[Unpack[TestArgs]], TestRet],
+            args_golden: Tuple[Unpack[GoldenArgs]],
+            args_test: Optional[Tuple[Unpack[TestArgs]]] = None,
             cmp_ret: Callable[[GoldenRet, TestRet], bool] = cmp_ret_equ,
             repr_ret: Callable[[GoldenRet | TestRet], str] = repr,
             describe_ret: str = "Return value",
@@ -180,15 +183,15 @@ class CasePipeline(CaseAdHoc):
         self.start_step_log()
         expr: str
         if expr_override is None:
-            expr = f"{test_f.__name__}{fmt_args_overridable(args, args_override)}"
+            expr = f"{test_f.__name__}{fmt_args_overridable(args_golden, args_override)}"
         else:
             expr = expr_override
         if assign_to is not None:
             expr = f"{assign_to} = {expr}"
         self.print(f">>> {expr}")
-        args_golden = args
         if args_test is None:
-            args_test = args
+            # HACK: we expect that where args_test is expected, args_golden can be used
+            args_test = cast(Tuple[Unpack[TestArgs]], args_golden)
         ret_expect, io_expect = io_trace.capture(lambda: golden_f(*args_golden))
         ret, io = self.catch(lambda: test_f(*args_test))
         ret_string, _ = self.catch(lambda: repr_ret(ret))
