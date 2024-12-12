@@ -279,8 +279,12 @@ def init() -> None:
     sys.stdout = stdout
 
 def deinit() -> None:
-    sys.stdin = sys.stdin.inner.inner # type: ignore[union-attr]
-    sys.stdout = sys.stdout.inner # type: ignore[union-attr]
+    assert isinstance(sys.stdin, IOTracer)
+    assert isinstance(sys.stdin.inner, MockReads)
+    assert isinstance(sys.stdout, IOTracer)
+
+    sys.stdin = sys.stdin.inner.inner
+    sys.stdout = sys.stdout.inner
 
     global stdin, stdout, stderr
     stdin = None
@@ -290,11 +294,12 @@ def deinit() -> None:
 def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Read | Write]]:
     global log, stdin
     assert stdin is not None
+    assert isinstance(stdin.inner, MockReads)
 
     # clear console i/o log
     log.swap()
     # freshly provide queue of stdin reads
-    stdin.inner.swap_queue(io_queue) # type: ignore[attr-defined]
+    stdin.inner.swap_queue(io_queue)
 
     ret: T = func() # @raise
 
