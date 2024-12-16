@@ -12,6 +12,9 @@ def fatal(msg: str) -> NoReturn:
     print(f"Error: {msg}", file=sys.stderr)
     exit(1)
 
+def warn(msg: str) -> None:
+    print(f"Warning: {msg}", file=sys.stderr)
+
 def info(msg: str) -> None:
     print(f"Info: {msg}", file=sys.stderr)
 
@@ -101,24 +104,25 @@ def build(script_dir: str, dst: str) -> None:
         pass
 
     # construct zip file
-    for algo, level in [
-            (zipfile.ZIP_DEFLATED, 9),
-            (zipfile.ZIP_BZIP2, 9),
-            (zipfile.ZIP_LZMA, -1),
-            (zipfile.ZIP_STORED, -1),
+    for algo_human, algo, level in [
+            ("zlib", zipfile.ZIP_DEFLATED, 9),
+            ("BZIP2", zipfile.ZIP_BZIP2, 9),
+            ("LZMA", zipfile.ZIP_LZMA, -1),
+            ("uncompressed", zipfile.ZIP_STORED, -1),
     ]:
         try:
             with ZipFile(zip_path, mode="w",
                          compression=algo, compresslevel=level) as zf:
                 add_to_zip(zf, script_dir, sources, algo, level)
 
-            info(f"successfully built ZIP '{str(zip_path)}' ({algo=}, {level=})")
+            info(f"successfully built ZIP '{str(zip_path)}' (algo={algo_human}, {level=})")
             return
 
         except RuntimeError:
+            warn(f"the compression method '{algo_human}' (code={algo}) is not supported")
             continue
 
-    fatal("no suitable compression method found. this is a bug.")
+    assert False, "no suitable compression method found, but ZIP_STORED should always be available."
 
 def main() -> None:
     parser = argparse.ArgumentParser(
