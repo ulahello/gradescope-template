@@ -9,6 +9,13 @@ import traceback
 
 # TODO: script should not be able to hang if exact console I/O interaction spelled out (possible to see that it's doing a read when we expected end?)
 
+# TODO: currently, crashes must be reported by students for them to be
+# noticed. their incentive is to get their homework in, so they'll
+# probably resubmit until it does not crash. however, the goal is to
+# make sure that as many crashes as possible are reported. it might be
+# better to do automated crash reporting so the burden isn't on
+# students AND we catch more bugs.
+
 WHERE_THE_RESULTS_GO: str = "results/results.json"
 WHERE_THE_SUBMISSION_IS: str = "submission"
 OUTPUT_FORMAT: "JsonOutputFormat" = "md"
