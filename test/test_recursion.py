@@ -24,8 +24,8 @@ def func1(x: int) -> int:
     return 0
 
 def func2(x: int) -> int:
-    inner = lambda x: 0 if x == 0 else inner(x - 1) # type: ignore
-    return inner(x) # type: ignore
+    inner: Callable[[int], int] = lambda x: 0 if x == 0 else inner(x - 1)
+    return inner(x)
 
 def func2b(x: int) -> int:
     inner: Callable[[int], int] = lambda x: 0 if x == 0 else inner(x - 1)
