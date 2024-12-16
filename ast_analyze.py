@@ -6,7 +6,7 @@ from pathlib import PurePath
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Generator, cast
 import ast
 
-# TODO: unify module resolution and make it reusable
+# TODOO: unify module resolution and make it reusable
 # TODO: doesn't consider how import statements change items in scope (eg. doesn't understand `import module as mod; mod.func()`)
 # NOTE: doesn't look at methods
 

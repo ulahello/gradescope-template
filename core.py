@@ -9,8 +9,8 @@ import traceback
 
 # TODO: script should not be able to hang if exact console I/O interaction spelled out (possible to see that it's doing a read when we expected end?)
 
-# TODO: currently, crashes must be reported by students for them to be
-# noticed. their incentive is to get their homework in, so they'll
+# TODOO: currently, crashes must be reported by students for them to
+# be noticed. their incentive is to get their homework in, so they'll
 # probably resubmit until it does not crash. however, the goal is to
 # make sure that as many crashes as possible are reported. it might be
 # better to do automated crash reporting so the burden isn't on
