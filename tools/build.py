@@ -121,7 +121,16 @@ def build(script_dir: str, dst: str) -> None:
     fatal("no suitable compression method found. this is a bug.")
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Assemble a Gradescope compliant zip file. If not all source files are present, you must run 'populate.py' first.")
+    parser = argparse.ArgumentParser(
+        description="""
+        Assemble a Gradescope compliant zip file.
+        """,
+
+        epilog="""
+        If not all source files are present, you must run 'populate.py' first.
+        Source files may also be specified in each line of the optional file "$SCRIPT_DIR/SOURCES".
+        """,
+    )
     parser.add_argument("SCRIPT_DIR", help="path to script directory where source files reside")
     parser.add_argument("DST", help="path to deposit zip file")
     args = parser.parse_args()
