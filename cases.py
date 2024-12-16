@@ -5,6 +5,7 @@ from util import *
 import ast_check
 import io_trace
 
+from pathlib import PurePath
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple, Generic
 import ast
 import inspect
@@ -252,14 +253,14 @@ CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 
 # bundle of data used to instantiate source node predicates
 class SourceSpec(NamedTuple):
-    source_paths: List[str]
+    source_paths: List[PurePath]
 
 # bundle of data used to instantiate func node predicates
 class FuncSpec(NamedTuple):
     func: Callable[..., Any]
     func_name: Optional[str]
-    func_def_path: str
-    source_paths: List[str]
+    func_def_path: PurePath
+    source_paths: List[PurePath]
 
     def resolve_func_name(self) -> str:
         if self.func_name is not None:
@@ -308,16 +309,16 @@ class FuncNodeP:
 # optional component to CaseCheckAst that performs a complex check on a source file's AST
 class SourceNodeP:
     predicate: ast_check.NodePredicate
-    source_paths: List[str]
+    source_paths: List[PurePath]
 
     def __init__(self, predicate: ast_check.NodePredicate,
-                 source_paths: List[str]) -> None:
+                 source_paths: List[PurePath]) -> None:
         self.predicate = predicate
         self.source_paths = source_paths
 
 class CaseCheckAst(Case):
     # maps source paths to their contents
-    sources: Dict[str, str]
+    sources: Dict[PurePath, str]
 
     # components that are each checked
     graph_p: Optional[GraphP]
@@ -356,7 +357,7 @@ class CaseCheckAst(Case):
         if self.source_node_p is not None:
             self._populate_sources(self.source_node_p.source_paths)
 
-    def _populate_sources(self, source_paths: List[str]) -> None:
+    def _populate_sources(self, source_paths: List[PurePath]) -> None:
         for path in source_paths:
             if path in self.sources:
                 continue
@@ -367,7 +368,7 @@ class CaseCheckAst(Case):
     def check_passed(self) -> None:
         assert self.has_run
 
-        funcs = collect_funcs(self.sources.keys(), self.sources.values())
+        funcs = collect_funcs(self.sources.items())
         self.passed = True
 
         # graph predicate
@@ -414,7 +415,7 @@ class CaseCheckAst(Case):
         output: str = ""
 
         # check if we're missing any function definitions
-        unresolved: Set[Tuple[str, str]] = set() # (func_def_path, func_name)
+        unresolved: Set[Tuple[PurePath, str]] = set() # (func_def_path, func_name)
         if self.graph_p is not None:
             if self.graph_p.graph_root is None:
                 func_name = self.graph_p.spec.resolve_func_name()
@@ -443,7 +444,7 @@ class CaseCheckAst(Case):
             output += "## Reasoning:\n"
 
         for why in self.summary.whys():
-            fname: str = why.fname
+            fname: PurePath = why.fname
             msg: str = why.msg
             if isinstance(why.node_cause, ast.expr):
                 line: int = why.node_cause.lineno
@@ -458,8 +459,8 @@ class CaseCheckRecursive(CaseCheckAst):
     def __init__(self, visible: bool, case_name: str,
                  func: Callable[..., Any],
                  func_name: Optional[str],
-                 func_def_path: str,
-                 source_paths: List[str],
+                 func_def_path: PurePath,
+                 source_paths: List[PurePath],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         spec: FuncSpec = FuncSpec(

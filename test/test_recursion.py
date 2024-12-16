@@ -3,12 +3,14 @@ sys.path.append("../")
 
 from ast_analyze import *
 import ast_check
+import common
 import test_recursion_ext
 
-from typing import List, Callable, Optional, Any
+from pathlib import PurePath
+from typing import List, Callable, Optional, Dict, Any
 
-def check_rec_ast_cycles(source_paths: List[str], sources: List[str], func_def_path: str, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    funcs = collect_funcs(source_paths, sources)
+def check_rec_ast_cycles(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+    funcs = collect_funcs(sources.items())
     graph_root = identify_func(funcs, func_def_path, func, func_name)
     if graph_root is None:
         return None
@@ -45,11 +47,10 @@ def func5(x: int) -> int:
     return func4(x)
 
 def main() -> None:
-    sources = []
-    source_paths = ["test_recursion.py", "test_recursion_ext.py"]
-    for path in source_paths:
-        with open(path, "r") as f:
-            sources.append(f.read())
+    sources = common.read_sources([
+        "test_recursion.py",
+        "test_recursion_ext.py",
+    ])
 
     for func_name, expect in [
             ("func0", False),
@@ -62,7 +63,7 @@ def main() -> None:
             ("func5", True),
        ]:
         func = eval(func_name)
-        assert check_rec_ast_cycles(source_paths, sources, "test_recursion.py", func, func_name) == expect, f"{func_name} should yield {expect}"
+        assert check_rec_ast_cycles(sources, PurePath("test_recursion.py"), func, func_name) == expect, f"{func_name} should yield {expect}"
 
     print("OK")
 

@@ -4,15 +4,17 @@ sys.path.append("../")
 from ast_analyze import *
 from cases import *
 import ast_check
+import common
 import test_recursion_ext
 
-from typing import List, Callable, Optional, Any, Set
+from pathlib import PurePath
+from typing import List, Callable, Optional, Any, Set, Dict
 import cmath
 import math
 import string
 
-def uses_str_fmt(source_paths: List[str], sources: List[str], func_def_path: str, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    funcs = collect_funcs(source_paths, sources)
+def uses_str_fmt(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+    funcs = collect_funcs(sources.items())
     graph_root = identify_func(funcs, func_def_path, func, func_name)
 
     # can't do anything if we can't find the function definition
@@ -49,12 +51,10 @@ def ok2() -> float:
     return math.sqrt(4.2)
 
 def main() -> None:
-    sources = []
-    source_paths = ["test_forbid_str.py"]
-    for path in source_paths:
-        with open(path, "r") as f:
-            sources.append(f.read())
-    [this] = source_paths
+    sources = common.read_sources([
+        "test_forbid_str.py",
+    ])
+    [this] = list(sources.keys())
 
     for func_name, expect in [
             ("bad1", True),
@@ -66,7 +66,7 @@ def main() -> None:
             ("ok2", False),
        ]:
         func = eval(func_name)
-        assert uses_str_fmt(source_paths, sources, this, func, func_name) == expect, f"{func_name} should yield {expect}"
+        assert uses_str_fmt(sources, this, func, func_name) == expect, f"{func_name} should yield {expect}"
 
     print("OK")
 

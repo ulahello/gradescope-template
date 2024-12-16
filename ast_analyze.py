@@ -2,6 +2,7 @@
 
 from core import *
 
+from pathlib import PurePath
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Generator, cast
 import ast
 
@@ -11,19 +12,19 @@ import ast
 
 class Func:
     name: str
-    source_path: str
-    parent_def: "Func | str" # str represents module path where defined
+    source_path: PurePath
+    parent_def: "Func | PurePath"
     calls: List["Func"]
     top_node: ast.AST
     todo_body: Optional[List[ast.AST]] # function body, awaiting being further parsed. if None, the Func is fully initialized.
     body: Tuple[ast.AST, ...]
 
-    def __init__(self, name: str, parent_def: "Func | str",
+    def __init__(self, name: str, parent_def: "Func | PurePath",
                  top_node: ast.AST, body: List[ast.AST]) -> None:
-        source_path: str
+        source_path: PurePath
         if isinstance(parent_def, Func):
             source_path = parent_def.source_path
-        elif isinstance(parent_def, str):
+        elif isinstance(parent_def, PurePath):
             source_path = parent_def
         else:
             assert False, "unreachable"
@@ -76,7 +77,7 @@ def walk_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, 
             yield child
             yield from walk_nodes_executed(ast.iter_child_nodes(child))
 
-def _collect_defs_shallow(parent_def: Func | str, func_body: Iterable[ast.AST]) -> Set[Func]:
+def _collect_defs_shallow(parent_def: Func | PurePath, func_body: Iterable[ast.AST]) -> Set[Func]:
     funcs: Set[Func] = set()
     for top_node in func_body:
         funcname: Optional[str] = None
@@ -119,7 +120,7 @@ def _collect_defs_shallow(parent_def: Func | str, func_body: Iterable[ast.AST]) 
                 loc: str
                 if isinstance(func.parent_def, Func):
                     loc = f"function '{func.parent_def.name}'"
-                elif isinstance(func.parent_def, str):
+                elif isinstance(func.parent_def, PurePath):
                     loc = f"'{func.parent_def}'"
                 else:
                     assert False, "unreachable"
@@ -141,7 +142,7 @@ def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
 
     return calls
 
-def _collect_funcs_shallow(mod_path: str, mod_src: str) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
+def _collect_funcs_shallow(mod_path: PurePath, mod_src: str) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
     mod_ast: ast.AST = ast.parse(mod_src)
     assert isinstance(mod_ast, ast.Module), "probably unreachable but please notify me if hit"
     funcs: List[Func] = []
@@ -172,7 +173,7 @@ def _collect_funcs_shallow(mod_path: str, mod_src: str) -> Tuple[List[Func], Lis
                         continue
 
                     # search func defs in increasingly broad scope
-                    containing: Func | str = func
+                    containing: Func | PurePath = func
                     found: bool = False
                     while not found:
                         for test_func in funcs:
@@ -206,11 +207,11 @@ def _resolve_unresolved(funcs: List[Func],
                 func.calls.append(test_func)
                 break
 
-def collect_funcs(source_paths: Iterable[str], sources: Iterable[str]) -> List[Func]:
+def collect_funcs(sources: Iterable[Tuple[PurePath, str]]) -> List[Func]:
     # collect function call graph for entirety of sources
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
-    for mod_path, mod_src in zip(source_paths, sources):
+    for mod_path, mod_src in sources:
         f, t = _collect_funcs_shallow(mod_path, mod_src)
         funcs.extend(f)
         todo_resolve.extend(t)
@@ -221,7 +222,7 @@ def collect_funcs(source_paths: Iterable[str], sources: Iterable[str]) -> List[F
     return funcs
 
 def identify_func(funcs: List[Func],
-                  func_def_path: str, func: Callable[..., Any],
+                  func_def_path: PurePath, func: Callable[..., Any],
                   func_name: Optional[str] = None) -> Optional[Func]:
     if func_name is None:
         func_name = func.__code__.co_name

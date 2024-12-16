@@ -7,11 +7,12 @@ graph predicates respectively for CaseCheckAst.
 
 from ast_analyze import *
 
+from pathlib import PurePath
 from typing import Optional, Set, List, Tuple, Iterable, Sequence, Any, Callable, Type, TypeAlias
 import ast
 
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
-NodePredicate: TypeAlias = Callable[["Summary", Sequence[ast.AST], str], None]
+NodePredicate: TypeAlias = Callable[["Summary", Sequence[ast.AST], PurePath], None]
 
 def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summary",
                         func: Func, seen: Set[Func]) -> None:
@@ -31,11 +32,11 @@ def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summa
         call_node_predicate(node_predicate, summary, called, seen)
 
 class Cause:
-    fname: str
+    fname: PurePath
     node_cause: ast.AST
     msg: str
 
-    def __init__(self, fname: str, node_cause: ast.AST, msg: str) -> None:
+    def __init__(self, fname: PurePath, node_cause: ast.AST, msg: str) -> None:
         self.fname = fname
         self.node_cause = node_cause
         assert len(msg.splitlines()) == 1, f"invalid {msg=}, must be one line"
@@ -71,7 +72,7 @@ class Summary:
     def whys(self) -> List[Cause]:
         return self._whys[:self.max_to_report]
 
-def forbid_funcalls(summary: Summary, body: Sequence[ast.AST], fname: str,
+def forbid_funcalls(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                     forbidden_funcs: Iterable[Tuple[Tuple[Optional[str], str], str]]) -> None:
     for node in body:
         if isinstance(node, ast.Call):
@@ -85,7 +86,7 @@ def forbid_funcalls(summary: Summary, body: Sequence[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_vars(summary: Summary, body: Sequence[ast.AST], fname: str,
+def forbid_vars(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                 forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
@@ -96,7 +97,7 @@ def forbid_vars(summary: Summary, body: Sequence[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_modules(summary: Summary, body: Sequence[ast.AST], fname: str,
+def forbid_modules(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                    forbidden_mods: Iterable[Tuple[str, str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
@@ -106,7 +107,7 @@ def forbid_modules(summary: Summary, body: Sequence[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: str,
+def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                             forbidden_types: Iterable[Type[Any]]) -> None:
     for node in body:
         if isinstance(node, ast.JoinedStr):
@@ -120,7 +121,7 @@ def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: st
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: str,
+def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                forbidden_ops: List[Tuple[Tuple[Type[ast.AST], str], str]]) -> None:
     for node in body:
         if isinstance(node, ast.BinOp):
@@ -130,7 +131,7 @@ def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: str,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def nodep_forbid_str_fmt(summary: Summary, body: Sequence[ast.AST], fname: str) -> None:
+def nodep_forbid_str_fmt(summary: Summary, body: Sequence[ast.AST], fname: PurePath) -> None:
     # TODO: inherently heuristic
 
     forbid_modules(summary, body, fname, [
@@ -146,7 +147,7 @@ def nodep_forbid_str_fmt(summary: Summary, body: Sequence[ast.AST], fname: str) 
         str,
     ])
 
-def nodep_forbid_float(summary: Summary, body: Sequence[ast.AST], fname: str) -> None:
+def nodep_forbid_float(summary: Summary, body: Sequence[ast.AST], fname: PurePath) -> None:
     # TODO: inherently heuristic
 
     forbid_funcalls(summary, body, fname, [
