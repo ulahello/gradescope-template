@@ -523,12 +523,16 @@ class CaseForbidStrFmt(CaseCheckAst):
                          fail_msg="Unexpectedly found string formatting.",
                          warning=warning)
 
-def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
+class DefStyle(NamedTuple):
+    uses_lambda: bool
+    uses_def: bool
+
+def check_def_style(func: Callable[..., Any]) -> DefStyle:
     src: str = inspect.getsource(func)
     try:
         tree: ast.AST = ast.parse(src)
     except IndentationError:
-        return (False, False)
+        return DefStyle(False, False)
 
     uses_lambda: bool = False
     uses_def: bool = False
@@ -540,4 +544,4 @@ def check_def_style(func: Callable[..., Any]) -> Tuple[bool, bool]:
             if isinstance(node, (ast.Assign, ast.AnnAssign)):
                 uses_lambda = isinstance(node.value, ast.Lambda)
 
-    return (uses_lambda, uses_def)
+    return DefStyle(uses_lambda, uses_def)
