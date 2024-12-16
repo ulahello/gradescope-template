@@ -60,7 +60,7 @@ def main() -> None:
             ("bad1", True),
             ("bad2", True),
             ("bad3", True),
-            # ("bad4", True), # FIXME: fails
+            ("bad4", True),
             ("bad5", True),
             ("ok1", False),
             ("ok2", False),
