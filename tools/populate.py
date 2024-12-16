@@ -102,7 +102,16 @@ def populate(template_path: str, dst: str) -> None:
     info(f"successfully populated script directory '{dst}'")
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fill in missing template files to populate a script directory.\nThe template repository is first checked out to the contents of '$DST/CHECKOUT'; see git-checkout(1) for valid contents.")
+    parser = argparse.ArgumentParser(
+        description="""
+        Copy missing template files into a script directory.
+        """,
+
+        epilog="""
+        The template repository is first checked out to the contents of the mandatory file "$DST/CHECKOUT"; see git-checkout(1) for valid contents.
+        The paths of additional sources (relative to $DST) can be specified in each line of the optional file "$DST/SOURCES".
+        """,
+    )
     parser.add_argument("TEMPLATE_PATH", help="path to template git repository")
     parser.add_argument("DST", help="path to script directory")
     args = parser.parse_args()
