@@ -3,8 +3,6 @@ sys.path.append("../")
 
 from util import *
 
-from typing import List, Callable, Optional, Any
-
 def main() -> None:
     assert cmp_ret_seq_freq([2, 2, 3], [2, 3, 2])
     assert not cmp_ret_seq_freq([2, 2, 3], [2, 0, 2])

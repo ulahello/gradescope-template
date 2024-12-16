@@ -1,31 +1,13 @@
 import sys
 sys.path.append("../")
 
-from ast_analyze import *
-from cases import *
 import ast_check
 import common
-import test_recursion_ext
 
-from pathlib import PurePath
-from typing import List, Callable, Optional, Any, Set, Dict
-import cmath
 import math
 import string
 
-def uses_str_fmt(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    funcs = collect_funcs(sources.items())
-    graph_root = identify_func(funcs, func_def_path, func, func_name)
-
-    # can't do anything if we can't find the function definition
-    if graph_root is None:
-        return None
-
-    # call node predicate on the top level nodes of each called function
-    summary = ast_check.Summary(1)
-    ast_check.call_node_predicate(ast_check.nodep_forbid_str_fmt, summary, graph_root, set())
-
-    return len(summary) != 0
+uses_str_fmt = common.make_binary_nodep_check(ast_check.nodep_forbid_str_fmt)
 
 def bad1() -> str:
     return str(24)

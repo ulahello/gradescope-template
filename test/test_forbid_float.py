@@ -1,30 +1,12 @@
 import sys
 sys.path.append("../")
 
-from ast_analyze import *
-from cases import *
 import ast_check
-import test_recursion_ext
 
-from pathlib import PurePath
-from typing import List, Callable, Optional, Any, Set, Dict
-import cmath
 import common
 import math
 
-def uses_float_op(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    funcs = collect_funcs(sources.items())
-    graph_root = identify_func(funcs, func_def_path, func, func_name)
-
-    # can't do anything if we can't find the function definition
-    if graph_root is None:
-        return None
-
-    # call node predicate on the top level nodes of each called function
-    summary = ast_check.Summary(1)
-    ast_check.call_node_predicate(ast_check.nodep_forbid_float, summary, graph_root, set())
-
-    return len(summary) != 0
+uses_float_op = common.make_binary_nodep_check(ast_check.nodep_forbid_float)
 
 def div() -> float:
     return 4 / 3
