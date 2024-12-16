@@ -108,9 +108,9 @@ def _display_mod_name(mod: ModuleLike, fallback: Optional[str]) -> str:
 
 def _get_func(mod: ModuleLike, name: str, mod_name: Optional[str] = None) -> Callable[..., Any]:
     mod_name = _display_mod_name(mod, mod_name)
-    func = _get_attribute(mod, name, f"Could not find function '{name}' in {mod_name}.")
+    func: Any | Callable[..., Any] = _get_attribute(mod, name, f"Could not find function '{name}' in {mod_name}.")
     if callable(func):
-        return func # type: ignore
+        return func
     else:
         raise AutograderError(None, f"Expected '{name}' in {mod_name} to be a function, but it has the type '{type(func).__name__}'.")
 
