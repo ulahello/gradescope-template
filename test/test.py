@@ -15,6 +15,7 @@ if __name__ == "__main__":
             ("util", test_util),
     ]:
         print(f"{log}...", end="")
+        sys.stdout.flush()
         mod.main()
 
     print("All tests OK!")
