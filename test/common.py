@@ -12,6 +12,13 @@ def read_sources(paths: List[str]) -> Dict[PurePath, str]:
             sources[PurePath(path)] = f.read()
     return sources
 
+def check_rec_ast_cycles(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+    funcs = collect_funcs(sources.items())
+    graph_root = identify_func(funcs, func_def_path, func, func_name)
+    if graph_root is None:
+        return None
+    return ast_check.graphp_check_recursion(graph_root, set())
+
 def make_binary_nodep_check(nodep: ast_check.NodePredicate) -> Callable[
     [Dict[PurePath, str], PurePath, Callable[..., Any], str],
     Optional[bool]
@@ -31,3 +38,6 @@ def make_binary_nodep_check(nodep: ast_check.NodePredicate) -> Callable[
         return len(summary) != 0
 
     return inner
+
+uses_str_fmt = make_binary_nodep_check(ast_check.nodep_forbid_str_fmt)
+uses_float_op = make_binary_nodep_check(ast_check.nodep_forbid_float)
