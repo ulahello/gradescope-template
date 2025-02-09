@@ -6,6 +6,7 @@ from io_trace import Read, Write
 from pipeline import *
 from util import *
 import ast_check
+import cli
 import io_trace
 
 from typing import Dict, List, Any, Optional, Callable
@@ -32,9 +33,4 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
     return cases
 
 if __name__ == "__main__":
-    io_trace.init()
-    try:
-        random.seed(23)
-        autograder_main(get_test_cases)
-    finally:
-        io_trace.deinit()
+    cli.main(get_test_cases)

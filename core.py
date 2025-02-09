@@ -289,15 +289,20 @@ class SummaryGood:
         else:
             self.score = 0.0
 
-    def write_to_results(self) -> None:
-        with open(WHERE_THE_RESULTS_GO, "w") as f:
-            f.write(json.dumps({
+    def make_real(self, want_summary: bool) -> None:
+        summary: JsonSummary = {
                 "score": self.score,
                 "output": self.output,
                 "output_format": OUTPUT_FORMAT,
                 "stdout_visibility": "hidden", # hidden so as to not reveal hidden test cases (if they write to stdout)
                 "tests": self.tests,
-            }))
+        }
+
+        with open(WHERE_THE_RESULTS_GO, "w") as f:
+            f.write(json.dumps(summary))
+
+        if want_summary:
+            print_summary(summary)
 
 # Summary of exceptions while loading test cases. It is "Bad" because
 # the submission could not be tested, eg. something went wrong!
@@ -321,16 +326,20 @@ class SummaryBad:
 
         print(format_traceback(self.exception), end="", file=self.output_f)
 
-    def write_to_results(self) -> None:
-        with open(WHERE_THE_RESULTS_GO, "w") as f:
-            summary: JsonSummary = {
-                "score": self.score,
-                "output": self.output_f.getvalue(),
-                "output_format": OUTPUT_FORMAT,
-                "stdout_visibility": "visible",
-            }
+    def make_real(self, want_summary: bool) -> None:
+        summary: JsonSummary = {
+            "score": self.score,
+            "output": self.output_f.getvalue(),
+            "output_format": OUTPUT_FORMAT,
+            "stdout_visibility": "visible",
+            "tests": [],
+        }
 
+        with open(WHERE_THE_RESULTS_GO, "w") as f:
             f.write(json.dumps(summary))
+
+        if want_summary:
+            print_summary(summary)
 
 def run_test_cases(cases: List[Case]) -> List[JsonTestCase]:
     tests = []
@@ -375,7 +384,21 @@ def load_submission_metadata() -> JsonMetadata:
         # HACK: does not check validity. not a clear way to do this in stdlib
         return cast(JsonMetadata, metadata)
 
-def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]]) -> None:
+def print_summary(summary: JsonSummary) -> None:
+    print(f"Assignment Score: {summary['score']}")
+    print()
+    print(summary["output"])
+
+    for test in summary["tests"]:
+        # TODO: we're assuming that scripts don't use level 1 or 2 headings
+        print(f"## [{test['status'].upper()}] {test['name']}")
+        for line in test["output"].splitlines():
+            print(line)
+        print()
+
+# TODO: set exit code based on pass/fail
+
+def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], want_summary: bool) -> None:
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
@@ -383,7 +406,7 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]]) -> Non
     except AutograderError as e:
         # the submission can't be tested! we need to report this to the student.
         summary_bad: SummaryBad = SummaryBad(exception=e)
-        summary_bad.write_to_results()
+        summary_bad.make_real(want_summary)
         return
 
     # set max_score dynamically based on however many points the assignment is worth
@@ -394,5 +417,6 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]]) -> Non
     # how did they go?
     summary: SummaryGood = SummaryGood(tests, max_score=max_score)
 
-    # write results to results.json!
-    summary.write_to_results()
+    # write/summarize the results!
+    summary.make_real(want_summary)
+
