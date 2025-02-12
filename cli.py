@@ -22,5 +22,3 @@ def main(get_test_cases: Callable[[JsonMetadata], List[Case]], rng_seed: int = 2
         autograder_main(get_test_cases, args.summary)
     finally:
         io_trace.deinit()
-
-    # summarize the results
