@@ -20,6 +20,9 @@ WHERE_THE_RESULTS_GO: str = "results/results.json"
 WHERE_THE_SUBMISSION_IS: str = "submission"
 OUTPUT_FORMAT: "JsonOutputFormat" = "md"
 
+EXIT_SUCCESS: int = 0
+EXIT_FAILURE: int = 1
+
 JsonOutputFormat: TypeAlias = Union[
     Literal["text"],
     Literal["html"],
@@ -241,6 +244,9 @@ class SummaryGood:
 
         self._format()
 
+    def all_passed(self) -> bool:
+        return self.num_passed_scored == self.num_scored
+
     def _format(self) -> None:
         """Populate the summary with the results of the tests. Already called by constructor."""
 
@@ -262,7 +268,7 @@ class SummaryGood:
             if not passed and not visible:
                     hidden_failing = True
 
-        all_passed: bool = self.num_passed_scored == self.num_scored
+        all_passed: bool = self.all_passed()
         assert self.num_passed_scored <= self.num_scored, "unreachable"
 
         if all_passed:
@@ -400,9 +406,7 @@ def print_summary(summary: JsonSummary) -> None:
             print(line)
         print()
 
-# TODO: set exit code based on pass/fail
-
-def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should_print_summary: bool) -> None:
+def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should_print_summary: bool) -> int:
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
@@ -411,7 +415,7 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         # the submission can't be tested! we need to report this to the student.
         summary_bad = SummaryBad(exception=e)
         summary_bad.report(should_print_summary)
-        return
+        return EXIT_FAILURE
 
     # set max_score dynamically based on however many points the assignment is worth
     max_score: float = float(metadata["assignment"]["total_points"])
@@ -423,4 +427,12 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
 
     # write/summarize the results!
     summary.report(should_print_summary)
+
+    # the exit code should always be zero if we're running on
+    # Gradescope, but for local tests it's helpful as an indicator of
+    # failed tests.
+    if not summary.all_passed() and should_print_summary:
+        return EXIT_FAILURE
+    else:
+        return EXIT_SUCCESS
 
