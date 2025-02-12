@@ -289,19 +289,19 @@ class SummaryGood:
         else:
             self.score = 0.0
 
-    def make_real(self, want_summary: bool) -> None:
-        summary: JsonSummary = {
-                "score": self.score,
-                "output": self.output,
-                "output_format": OUTPUT_FORMAT,
-                "stdout_visibility": "hidden", # hidden so as to not reveal hidden test cases (if they write to stdout)
-                "tests": self.tests,
+    def get_summary(self) -> JsonSummary:
+        return {
+            "score": self.score,
+            "output": self.output,
+            "output_format": OUTPUT_FORMAT,
+            "stdout_visibility": "hidden", # hidden so as to not reveal hidden test cases (if they write to stdout)
+            "tests": self.tests,
         }
 
-        with open(WHERE_THE_RESULTS_GO, "w") as f:
-            f.write(json.dumps(summary))
-
-        if want_summary:
+    def report(self, should_print_summary: bool) -> None:
+        summary = self.get_summary()
+        write_summary(summary)
+        if should_print_summary:
             print_summary(summary)
 
 # Summary of exceptions while loading test cases. It is "Bad" because
@@ -326,8 +326,8 @@ class SummaryBad:
 
         print(format_traceback(self.exception), end="", file=self.output_f)
 
-    def make_real(self, want_summary: bool) -> None:
-        summary: JsonSummary = {
+    def get_summary(self) -> JsonSummary:
+        return {
             "score": self.score,
             "output": self.output_f.getvalue(),
             "output_format": OUTPUT_FORMAT,
@@ -335,10 +335,10 @@ class SummaryBad:
             "tests": [],
         }
 
-        with open(WHERE_THE_RESULTS_GO, "w") as f:
-            f.write(json.dumps(summary))
-
-        if want_summary:
+    def report(self, should_print_summary: bool) -> None:
+        summary = self.get_summary()
+        write_summary(summary)
+        if should_print_summary:
             print_summary(summary)
 
 def run_test_cases(cases: List[Case]) -> List[JsonTestCase]:
@@ -384,6 +384,10 @@ def load_submission_metadata() -> JsonMetadata:
         # HACK: does not check validity. not a clear way to do this in stdlib
         return cast(JsonMetadata, metadata)
 
+def write_summary(summary: JsonSummary) -> None:
+    with open(WHERE_THE_RESULTS_GO, "w") as f:
+        f.write(json.dumps(summary))
+
 def print_summary(summary: JsonSummary) -> None:
     print(f"Assignment Score: {summary['score']}")
     print()
@@ -398,15 +402,15 @@ def print_summary(summary: JsonSummary) -> None:
 
 # TODO: set exit code based on pass/fail
 
-def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], want_summary: bool) -> None:
+def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should_print_summary: bool) -> None:
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
         cases = get_test_cases(metadata) # @raise
     except AutograderError as e:
         # the submission can't be tested! we need to report this to the student.
-        summary_bad: SummaryBad = SummaryBad(exception=e)
-        summary_bad.make_real(want_summary)
+        summary_bad = SummaryBad(exception=e)
+        summary_bad.report(should_print_summary)
         return
 
     # set max_score dynamically based on however many points the assignment is worth
@@ -415,8 +419,8 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], want_s
     # run the test cases!
     tests: List[JsonTestCase] = run_test_cases(cases)
     # how did they go?
-    summary: SummaryGood = SummaryGood(tests, max_score=max_score)
+    summary = SummaryGood(tests, max_score=max_score)
 
     # write/summarize the results!
-    summary.make_real(want_summary)
+    summary.report(should_print_summary)
 
