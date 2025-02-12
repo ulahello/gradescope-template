@@ -239,9 +239,9 @@ class SummaryGood:
         self.num_scored = 0
         self.num_passed_scored = 0
 
-        self.format()
+        self._format()
 
-    def format(self) -> None:
+    def _format(self) -> None:
         """Populate the summary with the results of the tests. Already called by constructor."""
 
         hidden_failing: bool = False
@@ -316,9 +316,9 @@ class SummaryBad:
         self.score = 0.0
         self.exception = exception
 
-        self.format()
+        self._format()
 
-    def format(self) -> None:
+    def _format(self) -> None:
         """Populate the summary with the exception info. Already called by constructor."""
         print("The student submission cannot be tested!", file=self.output_f)
         print("The autograder thinks this is an issue on the student's end, but please reach out if you don't think so, or if you have questions.", file=self.output_f)
