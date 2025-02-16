@@ -3,6 +3,7 @@ from _generics import *
 from io import TextIOWrapper, IOBase, TextIOBase, SEEK_SET
 from typing import List, Tuple, Optional, Iterator, Iterable, Any, Callable, AnyStr, IO, TextIO, BinaryIO, cast
 import sys
+from core import AutograderError
 
 class Read:
     val: str
@@ -65,7 +66,10 @@ class LineIter:
                 self.cur.val = "".join(lines[1:])
             else:
                 self.cur = None
-            line = lines[0]
+            if len(lines) > 0:
+                line = lines[0]
+            else:
+                line = cur.val # "" is the only string for which str.splitlines returns an empty list...
             ops.append(type(cur)(line))
             if line.splitlines(False) != line.splitlines(True):
                 # we found the line ending!
@@ -225,17 +229,25 @@ class MockReads(TextIOBase):
         if size is None:
             size = -1
         from_queue = self.pop_queue(size)
+
+        # we ran out of queued reads!!
+        # so we indicate end-of-file.
         if from_queue is None:
-            return self.inner.read(size)
+            return ""
+
         return from_queue
 
     def readline(self, size: int = -1) -> str: # type: ignore[override]
+        # ran out of queued reads
         if len(self.queue) <= self.POP_AT:
-            return self.inner.readline(size)
+            return ""
 
         s = self.queue[self.POP_AT]
         lines = s.splitlines(True)
-        line = lines[0]
+        if len(lines) > 0:
+            line = lines[0]
+        else:
+            line = ""
         new_size = min(size, len(line))
         ret = self.pop_queue(new_size)
         assert ret is not None, "unreachable"
@@ -291,7 +303,10 @@ def deinit() -> None:
     stdout = None
     stderr = None
 
-def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Read | Write]]:
+def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, bool, List[Read | Write]]:
+    class an_eof_happened_please_dont_look_at_this_value:
+        pass
+
     global log, stdin
     assert stdin is not None
     assert isinstance(stdin.inner, MockReads)
@@ -301,14 +316,20 @@ def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, List[Re
     # freshly provide queue of stdin reads
     stdin.inner.swap_queue(io_queue)
 
-    ret: T = func() # @raise
+    ret: T
+    try:
+        eof = False
+        ret = func() # @raise
+    except EOFError:
+        eof = True
+        ret = cast(T, an_eof_happened_please_dont_look_at_this_value())
 
     # save i/o log
     io_log: List[Read | Write] = log.ls
     # prevent future mutation of said log by swapping it for a different object
     log.swap()
 
-    return ret, io_log
+    return (ret, eof, io_log)
 
 def normalize_log(ls: Iterable[Read | Write]) -> List[Read | Write]:
     out = []
