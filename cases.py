@@ -4,6 +4,7 @@ from io_trace import Read, Write
 from util import *
 import ast_check
 import io_trace
+import load
 
 from pathlib import PurePath
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple, Generic
@@ -114,7 +115,7 @@ class CaseAdHoc(Case):
 
     def run_script(self, script: str, io_queue: List[str] = []) -> List[Read | Write]:
         _, io_log = self.run_func(
-            lambda: run_script(script),
+            lambda: load.run_script(script),
             io_queue=io_queue,
             msg="An exception was raised while running a student script.",
         )
@@ -243,7 +244,7 @@ class CaseScript(CaseIOBase):
 
     def run(self) -> None:
         try:
-            _, self.io_actual = io_trace.capture(lambda: run_script(self.script), self.io_queue)
+            _, self.io_actual = io_trace.capture(lambda: load.run_script(self.script), self.io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student script.")
 
