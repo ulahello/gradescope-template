@@ -82,12 +82,12 @@ def populate(template_path: str, dst: str) -> None:
     # the script was probably renamed according to the naming convention,
     # so we want to delete the version from the template.
     scripts: List[PurePath] = find_scripts(dst)
-    if 1 < len(scripts):
-        for to_remove in scripts:
-            if to_remove.name == "script_unit_section_exercise.py":
-                info(f"removing '{str(to_remove)}'")
-                os.remove(to_remove)
-                break
+    to_remove = ["script_unit_section_exercise.py", "script_test.py"]
+    if len(to_remove) < len(scripts):
+        for consider_remove in scripts:
+            if consider_remove.name in to_remove:
+                info(f"removing '{str(consider_remove)}'")
+                os.remove(consider_remove)
 
     # parse SOURCES
     sources: List[str] = read_sources(dst)
