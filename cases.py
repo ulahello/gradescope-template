@@ -456,6 +456,7 @@ class CaseCheckAst(Case):
 
         return output
 
+# TODO: assumes that finding recursion is desired
 class CaseCheckRecursive(CaseCheckAst):
     def __init__(self, visible: bool, case_name: str,
                  func: Callable[..., Any],

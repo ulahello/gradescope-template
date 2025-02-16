@@ -435,4 +435,3 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         return EXIT_FAILURE
     else:
         return EXIT_SUCCESS
-
