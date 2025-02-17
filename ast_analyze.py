@@ -3,8 +3,10 @@
 from core import *
 
 from pathlib import PurePath
+from types import ModuleType
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Generator, cast
 import ast
+import inspect
 
 # TODOO: unify module resolution and make it reusable
 # TODO: doesn't consider how import statements change items in scope (eg. doesn't understand `import module as mod; mod.func()`)
@@ -76,6 +78,94 @@ def walk_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, 
         if is_node_executed(child):
             yield child
             yield from walk_nodes_executed(ast.iter_child_nodes(child))
+
+def collect_funcs(sources: Iterable[ModuleType]) -> List[Func]:
+    def compat(mod: ModuleType) -> Tuple[PurePath, str]:
+        spec = mod.__spec__
+        assert spec is not None, "TODO: when is this not true?"
+        path = spec.origin
+        assert path is not None, "TODO: shouldnt be true for submissions"
+        return (PurePath(path), inspect.getsource(mod))
+
+    return collect_funcs_old(map(compat, sources))
+
+def collect_funcs_old(sources: Iterable[Tuple[PurePath, str]]) -> List[Func]:
+    # collect function call graph for entirety of sources
+    funcs: List[Func] = []
+    todo_resolve: List[Tuple[Func, Optional[str], str]] = []
+    for mod_path, mod_src in sources:
+        f, t = _collect_funcs_shallow(mod_path, mod_src)
+        funcs.extend(f)
+        todo_resolve.extend(t)
+
+    _resolve_unresolved(funcs, todo_resolve)
+    assert len(todo_resolve) == 0
+
+    return funcs
+
+def identify_func(funcs: List[Func],
+                  func_def_mod: ModuleType, func: Callable[..., Any],
+                  func_name: Optional[str] = None) -> Optional[Func]:
+    if func_name is None:
+        func_name = func.__code__.co_name
+
+    # assert False, "FIXME: replace func_def_path"
+    func_def_path = inspect.getsourcefile(func_def_mod)
+    assert func_def_path is not None, "TODO: restructure unreachable"
+
+    # identify the function we're checking within the call graph
+    graph_root: Optional[Func] = None
+    for test_func in funcs:
+        if test_func.parent_def == PurePath(func_def_path):
+            if test_func.name == func_name:
+                # found it!
+                graph_root = test_func
+
+    if graph_root is None:
+        # we can't analyze this if we can't find it.
+        # TODO: is this unreachable given correct inputs?
+        pass
+
+    return graph_root
+
+def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
+    name: Optional[str] = None
+    mod: Optional[str] = None
+    if isinstance(node, ast.Name):
+        name = node.id
+    elif isinstance(node, ast.Attribute):
+        name = node.attr
+        if isinstance(node.value, ast.Name):
+            mod = node.value.id
+    else:
+        assert False, "unreachable"
+    return (mod, name)
+
+def check_mod_item_eq(to_test: Tuple[Optional[str], str],
+                      mod: Optional[str], item: str) -> bool:
+    test_mod, test_item = to_test
+    # TODO: consider import statement side effects
+    eq: bool = test_mod == mod and test_item == item
+    return eq
+
+def check_mod_eq(to_test: str,
+                 node: ast.Attribute | ast.Name) -> bool:
+    (mod, _) = unpack_attr(node)
+    return to_test == mod
+
+def check_var_eq(to_test: Tuple[Optional[str], str],
+                 node: ast.Attribute | ast.Name) -> bool:
+    (mod, name) = unpack_attr(node)
+    return check_mod_item_eq(to_test, mod, name)
+
+def check_call_eq(to_test: Tuple[Optional[str], str],
+                  node: ast.Call) -> Optional[bool]:
+    if isinstance(node.func, (ast.Name, ast.Attribute)):
+        return check_var_eq(to_test, node.func)
+    return None
+
+
+###### internals
 
 def _collect_defs_shallow(parent_def: Func | PurePath, func_body: Iterable[ast.AST]) -> Set[Func]:
     funcs: Set[Func] = set()
@@ -206,74 +296,3 @@ def _resolve_unresolved(funcs: List[Func],
             if f"{mod}.py" == test_func.parent_def and name == test_func.name:
                 func.calls.append(test_func)
                 break
-
-def collect_funcs(sources: Iterable[Tuple[PurePath, str]]) -> List[Func]:
-    # collect function call graph for entirety of sources
-    funcs: List[Func] = []
-    todo_resolve: List[Tuple[Func, Optional[str], str]] = []
-    for mod_path, mod_src in sources:
-        f, t = _collect_funcs_shallow(mod_path, mod_src)
-        funcs.extend(f)
-        todo_resolve.extend(t)
-
-    _resolve_unresolved(funcs, todo_resolve)
-    assert len(todo_resolve) == 0
-
-    return funcs
-
-def identify_func(funcs: List[Func],
-                  func_def_path: PurePath, func: Callable[..., Any],
-                  func_name: Optional[str] = None) -> Optional[Func]:
-    if func_name is None:
-        func_name = func.__code__.co_name
-
-    # identify the function we're checking within the call graph
-    graph_root: Optional[Func] = None
-    for test_func in funcs:
-        if test_func.parent_def == func_def_path:
-            if test_func.name == func_name:
-                # found it!
-                graph_root = test_func
-
-    if graph_root is None:
-        # we can't analyze this if we can't find it.
-        # TODO: is this unreachable given correct inputs?
-        pass
-
-    return graph_root
-
-def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
-    name: Optional[str] = None
-    mod: Optional[str] = None
-    if isinstance(node, ast.Name):
-        name = node.id
-    elif isinstance(node, ast.Attribute):
-        name = node.attr
-        if isinstance(node.value, ast.Name):
-            mod = node.value.id
-    else:
-        assert False, "unreachable"
-    return (mod, name)
-
-def check_mod_item_eq(to_test: Tuple[Optional[str], str],
-                      mod: Optional[str], item: str) -> bool:
-    test_mod, test_item = to_test
-    # TODO: consider import statement side effects
-    eq: bool = test_mod == mod and test_item == item
-    return eq
-
-def check_mod_eq(to_test: str,
-                 node: ast.Attribute | ast.Name) -> bool:
-    (mod, _) = unpack_attr(node)
-    return to_test == mod
-
-def check_var_eq(to_test: Tuple[Optional[str], str],
-                 node: ast.Attribute | ast.Name) -> bool:
-    (mod, name) = unpack_attr(node)
-    return check_mod_item_eq(to_test, mod, name)
-
-def check_call_eq(to_test: Tuple[Optional[str], str],
-                  node: ast.Call) -> Optional[bool]:
-    if isinstance(node.func, (ast.Name, ast.Attribute)):
-        return check_var_eq(to_test, node.func)
-    return None

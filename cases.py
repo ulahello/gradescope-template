@@ -7,6 +7,7 @@ import io_trace
 import load
 
 from pathlib import PurePath
+from types import ModuleType
 from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Iterable, Sequence, TypeAlias, NamedTuple, Generic
 import ast
 import inspect
@@ -254,14 +255,14 @@ CHECK_AST_MAX_DIAGNOSTICS_DEFAULT: int = 4
 
 # bundle of data used to instantiate source node predicates
 class SourceSpec(NamedTuple):
-    source_paths: List[PurePath]
+    sources: List[ModuleType]
 
 # bundle of data used to instantiate func node predicates
 class FuncSpec(NamedTuple):
     func: Callable[..., Any]
-    func_name: Optional[str]
-    func_def_path: PurePath
-    source_paths: List[PurePath]
+    func_name: Optional[str] # if none, based on func.__code__.co_name
+    func_def_mod: ModuleType
+    sources: List[ModuleType]
 
     def resolve_func_name(self) -> str:
         if self.func_name is not None:
@@ -272,7 +273,7 @@ class FuncSpec(NamedTuple):
     def identify_func(self, funcs: List[Func]) -> Optional[Func]:
         return identify_func(
             funcs,
-            self.func_def_path,
+            self.func_def_mod,
             self.func,
             self.func_name,
         )
@@ -310,16 +311,15 @@ class FuncNodeP:
 # optional component to CaseCheckAst that performs a complex check on a source file's AST
 class SourceNodeP:
     predicate: ast_check.NodePredicate
-    source_paths: List[PurePath]
+    sources: List[ModuleType]
 
     def __init__(self, predicate: ast_check.NodePredicate,
-                 source_paths: List[PurePath]) -> None:
+                 sources: List[ModuleType]) -> None:
         self.predicate = predicate
-        self.source_paths = source_paths
+        self.sources = sources
 
 class CaseCheckAst(Case):
-    # maps source paths to their contents
-    sources: Dict[PurePath, str]
+    sources: Set[ModuleType]
 
     # components that are each checked
     graph_p: Optional[GraphP]
@@ -350,26 +350,18 @@ class CaseCheckAst(Case):
         self.summary = ast_check.Summary(max_diagnostics)
 
         # populate sources
-        self.sources = {}
+        self.sources = set()
         if self.graph_p is not None:
-            self._populate_sources(self.graph_p.spec.source_paths)
+            self.sources.update(self.graph_p.spec.sources)
         if self.func_node_p is not None:
-            self._populate_sources(self.func_node_p.spec.source_paths)
+            self.sources.update(self.func_node_p.spec.sources)
         if self.source_node_p is not None:
-            self._populate_sources(self.source_node_p.source_paths)
-
-    def _populate_sources(self, source_paths: List[PurePath]) -> None:
-        for path in source_paths:
-            if path in self.sources:
-                continue
-            with open(f"{WHERE_THE_SUBMISSION_IS}/{path}", "r") as f:
-                src: str = f.read()
-                self.sources[path] = src
+            self.sources.update(self.source_node_p.sources)
 
     def check_passed(self) -> None:
         assert self.has_run
 
-        funcs = collect_funcs(self.sources.items())
+        funcs = collect_funcs(self.sources)
         self.passed = True
 
         # graph predicate
@@ -397,13 +389,15 @@ class CaseCheckAst(Case):
 
         # node predicate (directly on ast / source)
         if self.source_node_p is not None:
-            for source_path in self.source_node_p.source_paths:
-                source: str = self.sources[source_path]
+            for source_mod in self.source_node_p.sources:
+                source: str = inspect.getsource(source_mod)
+                source_path = inspect.getsourcefile(source_mod)
+                assert source_path is not None, "TODO: submissions should have identifiable source path"
                 source_root: ast.AST = ast.parse(source)
                 (self.source_node_p.predicate)(
                     self.summary,
                     list(ast.walk(source_root)),
-                    source_path,
+                    PurePath(source_path),
                 )
 
         self.passed &= len(self.summary) == 0
@@ -416,17 +410,19 @@ class CaseCheckAst(Case):
         output: str = ""
 
         # check if we're missing any function definitions
-        unresolved: Set[Tuple[PurePath, str]] = set() # (func_def_path, func_name)
+        unresolved: Set[Tuple[ModuleType, str]] = set() # (func_def_mod, func_name)
         if self.graph_p is not None:
             if self.graph_p.graph_root is None:
                 func_name = self.graph_p.spec.resolve_func_name()
-                unresolved.add((self.graph_p.spec.func_def_path, func_name))
+                unresolved.add((self.graph_p.spec.func_def_mod, func_name))
         if self.func_node_p is not None:
             if self.func_node_p.graph_root is None:
                 func_name = self.func_node_p.spec.resolve_func_name()
-                unresolved.add((self.func_node_p.spec.func_def_path, func_name))
+                unresolved.add((self.func_node_p.spec.func_def_mod, func_name))
 
-        for (func_def_path, func_name) in unresolved:
+        for (func_def_mod, func_name) in unresolved:
+            func_def_path = inspect.getsourcefile(func_def_mod)
+            assert func_def_path is not None, "TODO: submissions should have identifiable source"
             output += f"Could not find the definition of function {func_name} in file '{func_def_path}'.\n"
 
         if len(unresolved):
@@ -461,13 +457,13 @@ class CaseCheckRecursive(CaseCheckAst):
     def __init__(self, visible: bool, case_name: str,
                  func: Callable[..., Any],
                  func_name: Optional[str],
-                 func_def_path: PurePath,
-                 source_paths: List[PurePath],
+                 func_def_mod: ModuleType,
+                 sources: List[ModuleType],
                  max_diagnostics: int = CHECK_AST_MAX_DIAGNOSTICS_DEFAULT,
                  warning: bool = False):
         spec: FuncSpec = FuncSpec(
             func=func, func_name=func_name,
-            func_def_path=func_def_path, source_paths=source_paths,
+            func_def_mod=func_def_mod, sources=sources,
         )
         graph_p: GraphP = GraphP(
             predicate=ast_check.graphp_check_recursion,

@@ -3,29 +3,23 @@ from cases import *
 import ast_check
 
 from pathlib import PurePath
-from typing import Dict, List, Optional, Callable, Any
+from types import ModuleType
+from typing import Dict, List, Optional, Callable, Any, Iterable
 
-def read_sources(paths: List[str]) -> Dict[PurePath, str]:
-    sources = {}
-    for path in paths:
-        with open(path, "r") as f:
-            sources[PurePath(path)] = f.read()
-    return sources
-
-def check_rec_ast_cycles(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-    funcs = collect_funcs(sources.items())
-    graph_root = identify_func(funcs, func_def_path, func, func_name)
+def check_rec_ast_cycles(sources: Iterable[ModuleType], func_def_mod: ModuleType, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+    funcs = collect_funcs(sources)
+    graph_root = identify_func(funcs, func_def_mod, func, func_name)
     if graph_root is None:
         return None
     return ast_check.graphp_check_recursion(graph_root, set())
 
 def make_binary_nodep_check(nodep: ast_check.NodePredicate) -> Callable[
-    [Dict[PurePath, str], PurePath, Callable[..., Any], str],
+    [Iterable[ModuleType], ModuleType, Callable[..., Any], str],
     Optional[bool]
 ]:
-    def inner(sources: Dict[PurePath, str], func_def_path: PurePath, func: Callable[..., Any], func_name: str) -> Optional[bool]:
-        funcs = collect_funcs(sources.items())
-        graph_root = identify_func(funcs, func_def_path, func, func_name)
+    def inner(sources: Iterable[ModuleType], func_def_mod: ModuleType, func: Callable[..., Any], func_name: str) -> Optional[bool]:
+        funcs = collect_funcs(sources)
+        graph_root = identify_func(funcs, func_def_mod, func, func_name)
 
         # can't do anything if we can't find the function definition
         if graph_root is None:
