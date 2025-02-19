@@ -415,7 +415,10 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         # the submission can't be tested! we need to report this to the student.
         summary_bad = SummaryBad(exception=e)
         summary_bad.report(should_print_summary)
-        return EXIT_FAILURE
+        if should_print_summary:
+            return EXIT_FAILURE
+        else:
+            return EXIT_SUCCESS
 
     # set max_score dynamically based on however many points the assignment is worth
     max_score: float = float(metadata["assignment"]["total_points"])
