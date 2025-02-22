@@ -42,7 +42,7 @@ class CasePipeline(CaseAdHoc):
         self.finish_step_log(joy=False)
         self.run_post()
 
-    def catch(self, f: Callable[[], T]) -> Tuple[T, List[Read | Write]]:
+    def catch(self, f: Callable[[], T]) -> Tuple[T, bool, List[Read | Write]]:
         try:
             return io_trace.capture(f)
         except Exception as e:
@@ -178,6 +178,7 @@ class CasePipeline(CaseAdHoc):
             expr_override: Optional[str] = None,
     ) -> Tuple[GoldenRet, TestRet]:
         self.start_step_log()
+
         expr: str
         if expr_override is None:
             expr = f"{test_f.__name__}{fmt_args_overridable(args, args_override)}"
@@ -186,24 +187,39 @@ class CasePipeline(CaseAdHoc):
         if assign_to is not None:
             expr = f"{assign_to} = {expr}"
         self.print(f">>> {expr}")
+
         args_golden = args
         if args_test is None:
             args_test = args
-        ret_expect, io_expect = io_trace.capture(lambda: golden_f(*args_golden))
-        ret, io = self.catch(lambda: test_f(*args_test))
-        ret_string, _ = self.catch(lambda: repr_ret(ret))
-        eq, _ = self.catch(lambda: cmp_ret(ret_expect, ret))
+        ret_expect, eof_expect, io_expect = io_trace.capture(lambda: golden_f(*args_golden))
+        assert not eof_expect, "golden function got EOF when reading, make sure to queue the appropriate I/O (TODO: pipeline interface doesn't accept io_queue)"
+
+        ret, eof, io = self.catch(lambda: test_f(*args_test))
+        if not eof:
+            ret_string, _, _ = self.catch(lambda: repr_ret(ret))
+            eq, _, _ = self.catch(lambda: cmp_ret(ret_expect, ret))
+
+        # display I/O
         self.print(fmt_io_verbatim(io), end="")
-        if assign_to is None and ret is not None:
-            self.print(ret_string)
-        if not self.expect(eq):
-            self.finish_step_log(joy=False)
-            self.print(fmt_ret_s(repr_ret(ret_expect), ret_string, False, describe_ret), end="")
-            raise EarlyReturn
+
+        if not eof:
+            # display return value
+            if assign_to is None and ret is not None:
+                self.print(ret_string)
+
+            # report return value mismatch
+            if not self.expect(eq):
+                self.finish_step_log(joy=False)
+                self.print(fmt_ret_s(repr_ret(ret_expect), ret_string, False, describe_ret), end="")
+                raise EarlyReturn
+
+        # report I/O mismatch
         if not self.expect(cmp_io(io_expect, io)):
             self.finish_step_log(joy=False)
             self.print(fmt_io(io_expect, io, False), end="")
             raise EarlyReturn
+
+        assert not eof, "unreachable: EOF should always yield I/O mismatch"
         return ret_expect, ret
 
 class Lambda:

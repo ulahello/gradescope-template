@@ -27,7 +27,9 @@ If the functionality you're looking for isn't present or is inadequate, you can 
 
 This repository is laid out so that you can run [`script_*.py`](./script_unit_section_exercise.py) and it should work as expected.
 It will look for submission files in [`submission/`](./submission/).
-Once you've run it, take a look at [`results/results.json`](./results/results.json) for your output, as Gradescope will see it.
+Once you've run it, [`results/results.json`](./results/results.json) contains the output as Gradescope will see it.
+
+You can pass the `--summary` argument to the script to print the results more legibly.
 
 ## How do I generate the ZIP file?
 
