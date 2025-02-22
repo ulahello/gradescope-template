@@ -3,7 +3,6 @@ from _generics import *
 from io import TextIOWrapper, IOBase, TextIOBase, SEEK_SET
 from typing import List, Tuple, Optional, Iterator, Iterable, Any, Callable, AnyStr, IO, TextIO, BinaryIO, cast
 import sys
-from core import AutograderError
 
 class Read:
     val: str
