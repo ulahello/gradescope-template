@@ -336,6 +336,8 @@ def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, bool, L
     return (ret, eof, io_log)
 
 def normalize_log(ls: Iterable[Read | Write]) -> List[Read | Write]:
+    """Merge consecutive operations of the same type."""
+
     out = []
     acc = None
     for op in ls:
