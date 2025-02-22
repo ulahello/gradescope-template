@@ -138,10 +138,10 @@ def format_traceback(payload: Exception) -> str:
             return
         seen.add(id(exc))
 
-        tb = exc.__traceback__
+        tb = exc.__traceback__ # https://peps.python.org/pep-3134/
         while tb is not None:
             tb_info = inspect.getframeinfo(tb)
-            tb = tb.tb_next
+            tb = tb.tb_next # https://docs.python.org/3/reference/datamodel.html#traceback.tb_next
             # TODO: absolute path of student submission pulls back curtain on gradescope directory hierarchy
             if frame_predicate(tb_info.filename):
                 break
@@ -413,7 +413,10 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         # the submission can't be tested! we need to report this to the student.
         summary_bad = SummaryBad(exception=e)
         summary_bad.report(should_print_summary)
-        return EXIT_FAILURE
+        if should_print_summary:
+            return EXIT_FAILURE
+        else:
+            return EXIT_SUCCESS
 
     # set max_score dynamically based on however many points the assignment is worth
     max_score: float = float(metadata["assignment"]["total_points"])
@@ -433,4 +436,3 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         return EXIT_FAILURE
     else:
         return EXIT_SUCCESS
-
