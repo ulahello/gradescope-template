@@ -171,6 +171,13 @@ def check_mod_func_eq(module: ModuleType, spec: Callable[..., Any], query: Tuple
     by_ctor: bool = mod is None and inspect.isclass(spec) and name == spec.__name__
     return by_lookup or by_builtin or by_ctor
 
+def check_mod_eq(module: ModuleType, spec: ModuleType, query: str) -> bool:
+    try:
+        test = getattr(module, query)
+    except AttributeError:
+        return False
+    return spec is test
+
 ###### internals
 
 def _collect_child_defs_shallow(parent_def: Func | ModuleType, func_body: Iterable[ast.AST]) -> Set[Func]:

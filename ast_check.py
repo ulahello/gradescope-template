@@ -115,12 +115,7 @@ def forbid_modules(summary: Summary, fname: PurePath,
             if spec_mod is None:
                 continue
             for forbidden, reasoning in forbidden_mods:
-                # TODO: make this a function in ast_analyze
-                try:
-                    test = getattr(module, spec_mod)
-                except AttributeError:
-                    continue
-                if test is forbidden:
+                if check_mod_eq(module, forbidden, spec_mod):
                     msg: str = f"the module `{forbidden.__name__}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
