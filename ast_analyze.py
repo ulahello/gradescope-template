@@ -4,36 +4,39 @@ from core import *
 
 from pathlib import PurePath
 from types import ModuleType
-from typing import List, Optional, Any, Callable, Tuple, Dict, Set, Sequence, Iterable, Generator, cast
+from typing import List, Optional, Any, Callable, Tuple, Set, Iterable, Generator, cast
 import ast
 import inspect
 
-# TODOO: unify module resolution and make it reusable
-# TODO: doesn't consider how import statements change items in scope (eg. doesn't understand `import module as mod; mod.func()`)
 # NOTE: doesn't look at methods
+# TODO: consistent language around spec, query, func, mod, etc
 
 class Func:
     name: str
     source_path: PurePath
-    parent_def: "Func | PurePath"
+    parent_def: "Func | ModuleType"
+    defines: List["Func"]
     calls: List["Func"]
     top_node: ast.AST
     todo_body: Optional[List[ast.AST]] # function body, awaiting being further parsed. if None, the Func is fully initialized.
     body: Tuple[ast.AST, ...]
 
-    def __init__(self, name: str, parent_def: "Func | PurePath",
+    def __init__(self, name: str, parent_def: "Func | ModuleType",
                  top_node: ast.AST, body: List[ast.AST]) -> None:
         source_path: PurePath
         if isinstance(parent_def, Func):
             source_path = parent_def.source_path
-        elif isinstance(parent_def, PurePath):
-            source_path = parent_def
+        elif isinstance(parent_def, ModuleType):
+            p = inspect.getsourcefile(parent_def) # FIXME: use relative path
+            assert p is not None, "FIXME: handle this"
+            source_path = PurePath(p)
         else:
             assert False, "unreachable"
 
         self.name = name
         self.source_path = source_path
         self.parent_def = parent_def
+        self.defines = []
         self.calls = []
         self.top_node = top_node
         self.body = tuple(body)
@@ -51,6 +54,22 @@ class Func:
     def is_fully_init(self) -> bool:
         return self.todo_body is None
 
+    def display_parent_def(self) -> str:
+        # TODO: always show source path for unambiguous
+        if isinstance(self.parent_def, Func):
+            return f"function '{self.parent_def.name}'"
+        elif isinstance(self.parent_def, ModuleType):
+            return f"'{self.source_path}'"
+        else:
+            assert False, "unreachable"
+
+    def containing_module(self) -> ModuleType:
+        func: Func | ModuleType = self
+        while isinstance(func, Func):
+            func = func.parent_def
+        assert isinstance(func, ModuleType)
+        return func
+
 def is_node_executed(node: ast.AST) -> bool:
     # the child nodes of the following types are not executed
     # until the function is called or class is used (etc)
@@ -60,7 +79,9 @@ def is_node_executed(node: ast.AST) -> bool:
     return True
 
 def iter_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, None]:
-    """Iterate the flat list of nodes to yield those that may be executed directly (eg. excluding nodes in function or class definitions)."""
+    """Iterate the flat list of nodes to yield those that may be
+    executed directly (eg. excluding nodes in function or class
+    definitions)."""
 
     for node in body:
         if is_node_executed(node):
@@ -80,25 +101,20 @@ def walk_nodes_executed(body: Iterable[ast.AST]) -> Generator[ast.AST, ast.AST, 
             yield from walk_nodes_executed(ast.iter_child_nodes(child))
 
 def collect_funcs(sources: Iterable[ModuleType]) -> List[Func]:
-    def compat(mod: ModuleType) -> Tuple[PurePath, str]:
-        spec = mod.__spec__
-        assert spec is not None, "TODO: when is this not true?"
-        path = spec.origin
-        assert path is not None, "TODO: shouldnt be true for submissions"
-        return (PurePath(path), inspect.getsource(mod))
-
-    return collect_funcs_old(map(compat, sources))
-
-def collect_funcs_old(sources: Iterable[Tuple[PurePath, str]]) -> List[Func]:
-    # collect function call graph for entirety of sources
+    # pass 1: collect definitions
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
-    for mod_path, mod_src in sources:
-        f, t = _collect_funcs_shallow(mod_path, mod_src)
+    for module in sources:
+        spec = module.__spec__
+        assert spec is not None, "FIXME: handle this"
+        mod_src = inspect.getsource(module)
+
+        f, t = _collect_funcs_without_calls(module, ast.parse(mod_src))
         funcs.extend(f)
         todo_resolve.extend(t)
 
-    _resolve_unresolved(funcs, todo_resolve)
+    # pass 2: resolve calls
+    _resolve_calls(funcs, todo_resolve)
     assert len(todo_resolve) == 0
 
     return funcs
@@ -108,25 +124,10 @@ def identify_func(funcs: List[Func],
                   func_name: Optional[str] = None) -> Optional[Func]:
     if func_name is None:
         func_name = func.__code__.co_name
-
-    # assert False, "FIXME: replace func_def_path"
-    func_def_path = inspect.getsourcefile(func_def_mod)
-    assert func_def_path is not None, "TODO: restructure unreachable"
-
-    # identify the function we're checking within the call graph
-    graph_root: Optional[Func] = None
     for test_func in funcs:
-        if test_func.parent_def == PurePath(func_def_path):
-            if test_func.name == func_name:
-                # found it!
-                graph_root = test_func
-
-    if graph_root is None:
-        # we can't analyze this if we can't find it.
-        # TODO: is this unreachable given correct inputs?
-        pass
-
-    return graph_root
+        if check_mod_func_eq(func_def_mod, func, (None, test_func.name)):
+            return test_func
+    return None
 
 def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
     name: Optional[str] = None
@@ -141,33 +142,38 @@ def unpack_attr(node: ast.Attribute | ast.Name) -> Tuple[Optional[str], str]:
         assert False, "unreachable"
     return (mod, name)
 
-def check_mod_item_eq(to_test: Tuple[Optional[str], str],
-                      mod: Optional[str], item: str) -> bool:
-    test_mod, test_item = to_test
-    # TODO: consider import statement side effects
-    eq: bool = test_mod == mod and test_item == item
-    return eq
+def get_mod_item(module: ModuleType, query: Tuple[Optional[str], str]) -> Optional[Any]:
+    qmod, qname = query
+    try:
+        if qmod is None:
+            test = getattr(module, qname)
+        else:
+            parent = getattr(module, qmod)
+            test = getattr(parent, qname)
+    except AttributeError:
+        return None
+    return test
 
-def check_mod_eq(to_test: str,
-                 node: ast.Attribute | ast.Name) -> bool:
-    (mod, _) = unpack_attr(node)
-    return to_test == mod
+def get_mod_func(module: ModuleType, query: Tuple[Optional[str], str]) -> Optional[Callable[..., Any]]:
+    test = get_mod_item(module, query)
+    if not callable(test):
+        return None
+    return cast(Callable[..., Any], test)
 
-def check_var_eq(to_test: Tuple[Optional[str], str],
-                 node: ast.Attribute | ast.Name) -> bool:
-    (mod, name) = unpack_attr(node)
-    return check_mod_item_eq(to_test, mod, name)
+def check_mod_item_eq(module: ModuleType, spec: Any, query: Tuple[Optional[str], str]) -> bool:
+    return spec is get_mod_item(module, query)
 
-def check_call_eq(to_test: Tuple[Optional[str], str],
-                  node: ast.Call) -> Optional[bool]:
-    if isinstance(node.func, (ast.Name, ast.Attribute)):
-        return check_var_eq(to_test, node.func)
-    return None
-
+def check_mod_func_eq(module: ModuleType, spec: Callable[..., Any], query: Tuple[Optional[str], str]) -> bool:
+    # TODO: handling builtin functions by special casing feels hacky (am i forgetting another case???)
+    mod, name = query
+    by_lookup: bool = spec is get_mod_func(module, query)
+    by_builtin: bool = mod is None and inspect.isbuiltin(spec) and name == spec.__name__
+    by_ctor: bool = mod is None and inspect.isclass(spec) and name == spec.__name__
+    return by_lookup or by_builtin or by_ctor
 
 ###### internals
 
-def _collect_defs_shallow(parent_def: Func | PurePath, func_body: Iterable[ast.AST]) -> Set[Func]:
+def _collect_child_defs_shallow(parent_def: Func | ModuleType, func_body: Iterable[ast.AST]) -> Set[Func]:
     funcs: Set[Func] = set()
     for top_node in func_body:
         funcname: Optional[str] = None
@@ -207,15 +213,9 @@ def _collect_defs_shallow(parent_def: Func | PurePath, func_body: Iterable[ast.A
         if funcname is not None and body is not None:
             func: Func = Func(funcname, parent_def, top_node, body)
             if func in funcs:
-                loc: str
-                if isinstance(func.parent_def, Func):
-                    loc = f"function '{func.parent_def.name}'"
-                elif isinstance(func.parent_def, PurePath):
-                    loc = f"'{func.parent_def}'"
-                else:
-                    assert False, "unreachable"
-                raise AutograderError(None, f"Function '{func.name}', defined in {loc}, has conflicting implementations. Please ensure that it is defined at most once.")
+                raise AutograderError(None, f"Function '{func.name}', defined in {func.display_parent_def()}, has conflicting implementations. Please ensure that it is defined at most once.")
             funcs.add(func)
+
     return funcs
 
 def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
@@ -223,76 +223,83 @@ def _collect_calls(body: Iterable[ast.AST]) -> Set[Tuple[Optional[str], str]]:
 
     # visit all child nodes, excluding child nodes of function or lambda definitions
     for node in iter_nodes_executed(body):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name):
-                calls.add((None, node.func.id))
-            elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-                calls.add((node.func.value.id, node.func.attr))
+        if isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute)):
+            spec = unpack_attr(node.func)
+            calls.add(spec)
         calls |= _collect_calls(ast.iter_child_nodes(node))
 
     return calls
 
-def _collect_funcs_shallow(mod_path: PurePath, mod_src: str) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
-    mod_ast: ast.AST = ast.parse(mod_src)
+def _collect_funcs_without_calls(module: ModuleType, mod_ast: ast.AST) -> Tuple[List[Func], List[Tuple[Func, Optional[str], str]]]:
     assert isinstance(mod_ast, ast.Module), "probably unreachable but please notify me if hit"
+
     funcs: List[Func] = []
-    funcs.extend(_collect_defs_shallow(mod_path, mod_ast.body))
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
 
-    found_uninit: bool = True
-    while found_uninit:
-        found_uninit = False
-        for func in funcs:
-            if not func.is_fully_init():
-                found_uninit = True
+    graph_edge = _collect_child_defs_shallow(module, mod_ast.body)
+    next_graph_edge: Set[Func] = set()
+    while len(graph_edge):
+        for func in graph_edge:
+            assert func.todo_body is not None, "unreachable"
 
-                assert func.todo_body is not None, "unreachable"
-                # 1) add unparsed func definitions to `funcs`
-                child_defs: Set[Func] = _collect_defs_shallow(func, func.todo_body)
-                funcs.extend(child_defs)
-                # 2) collect unparsed function calls
-                raw_calls: Set[Tuple[Optional[str], str]] = _collect_calls(func.todo_body)
-                # 3) place function calls into `funcs` by following parents
-                for mod, name in raw_calls:
-                    if mod is not None:
-                        # we don't have access to the
-                        # definition of all functions in other
-                        # modules (nor can we), so we resolve
-                        # these later.
-                        todo_resolve.append((func, mod, name))
-                        continue
+            # 1) add unparsed func definitions to next graph edge
+            child_defs: Set[Func] = _collect_child_defs_shallow(func, func.todo_body)
+            func.defines.extend(child_defs)
+            next_graph_edge.update(child_defs)
 
-                    # search func defs in increasingly broad scope
-                    containing: Func | PurePath = func
-                    found: bool = False
-                    while not found:
-                        for test_func in funcs:
-                            # NOTE: this is also "module resolution"
-                            if containing == test_func.parent_def:
-                                assert mod is None, "unreachable"
-                                if name == test_func.name:
-                                    func.calls.append(test_func)
-                                    found = True
-                                    break
-                        if not found:
-                            if isinstance(containing, Func):
-                                containing = containing.parent_def
-                            else:
-                                # we've hit the ceiling of the parent_def chain:
-                                # the function is defined outside of our knowledge (probably in some standard module).
-                                break
+            # 2) collect unparsed function calls
+            raw_calls: Set[Tuple[Optional[str], str]] = _collect_calls(func.todo_body)
+            todo_resolve.extend(map(lambda call: (func, *call), raw_calls))
 
-                # 4) mark func as initialized
-                func.todo_body = None
+        funcs.extend(graph_edge)
+        graph_edge, next_graph_edge = next_graph_edge, graph_edge
+        next_graph_edge.clear()
 
     return (funcs, todo_resolve)
 
-def _resolve_unresolved(funcs: List[Func],
-                        todo_resolve: List[Tuple[Func, Optional[str], str]]) -> None:
+def _lookup_call(funcs: List[Func], func: Func, mod: Optional[str], name: str) -> Optional[Func]:
+    # the called function is defined in...
+    if mod is None:
+        # case 1: the current function
+        for defines in func.defines:
+            if defines.name == name:
+                return defines
+
+        # case 2: a parent function
+        parent = func.parent_def
+        while isinstance(parent, Func):
+            for defines in parent.defines:
+                if defines.name == name:
+                    return defines
+            parent = parent.parent_def
+        assert isinstance(parent, ModuleType)
+    else:
+        parent = func.containing_module()
+
+    # try to find a Func that corresponds to `target`
+    target: Optional[Callable[..., Any]] = get_mod_func(parent, (mod, name))
+    if target is None:
+        return None
+
+    for test in funcs:
+        if not isinstance(test.parent_def, ModuleType):
+            # not defined top-level
+            continue
+
+        if getattr(test.parent_def, test.name) == target:
+            return test
+
+    # it could be a function from a module we weren't told about
+    # (ex. standard library, supposing it is not passed)
+    return None
+
+def _resolve_calls(funcs: List[Func], todo_resolve: List[Tuple[Func, Optional[str], str]]) -> None:
     while len(todo_resolve) > 0:
         func, mod, name = todo_resolve.pop()
-        for test_func in funcs:
-            # NOTE: this is where (super basic) "module resolution" happens
-            if f"{mod}.py" == test_func.parent_def and name == test_func.name:
-                func.calls.append(test_func)
-                break
+        call = _lookup_call(funcs, func, mod, name)
+        if call is not None:
+            func.calls.append(call)
+
+    # mark all funcs as initialized, now that calls are resolved
+    for func in funcs:
+        func.todo_body = None

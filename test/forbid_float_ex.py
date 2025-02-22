@@ -24,6 +24,9 @@ def bad3() -> float:
 def bad4() -> float:
     return math_var()
 
+def bad5() -> float:
+    return float(1)
+
 def ok1() -> int:
     return 3 // 2
 

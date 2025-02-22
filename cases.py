@@ -396,8 +396,9 @@ class CaseCheckAst(Case):
                 source_root: ast.AST = ast.parse(source)
                 (self.source_node_p.predicate)(
                     self.summary,
-                    list(ast.walk(source_root)),
                     PurePath(source_path),
+                    source_mod,
+                    list(ast.walk(source_root)),
                 )
 
         self.passed &= len(self.summary) == 0
