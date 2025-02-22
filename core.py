@@ -7,8 +7,6 @@ import json
 import os
 import traceback
 
-# TODO: script should not be able to hang if exact console I/O interaction spelled out (possible to see that it's doing a read when we expected end?)
-
 # TODOO: currently, crashes must be reported by students for them to
 # be noticed. their incentive is to get their homework in, so they'll
 # probably resubmit until it does not crash. however, the goal is to

@@ -105,16 +105,16 @@ class CaseAdHoc(Case):
             func: Callable[[], T],
             io_queue: List[str] = [],
             msg: str = "An exception was raised while running a student function.",
-    ) -> Tuple[T, List[Read | Write]]:
+    ) -> Tuple[T, bool, List[Read | Write]]:
         try:
-            ret, io_log = io_trace.capture(func, io_queue=io_queue)
+            ret, eof, io_log = io_trace.capture(func, io_queue=io_queue)
         except Exception as e:
             raise AutograderError(e, msg)
 
-        return ret, io_log
+        return ret, eof, io_log
 
     def run_script(self, script: str, io_queue: List[str] = []) -> List[Read | Write]:
-        _, io_log = self.run_func(
+        _, _, io_log = self.run_func(
             lambda: load.run_script(script),
             io_queue=io_queue,
             msg="An exception was raised while running a student script.",
@@ -178,6 +178,7 @@ class CaseFunc(CaseIOBase, Generic[T]):
     ret_expect: Optional[T]
     ret_actual: Optional[T]
     ret_passed: Optional[bool]
+    eof: Optional[bool] # if true, the return value should not be checked, and we assume the case fails
 
     def __init__(self,
                  visible: bool,
@@ -200,16 +201,19 @@ class CaseFunc(CaseIOBase, Generic[T]):
         self.ret_expect = ret_expect
         self.ret_actual = None
         self.ret_passed = None
+        self.eof = None
 
     def run(self) -> None:
         try:
-            self.ret_actual, self.io_actual = io_trace.capture(lambda: self.func(*self.args), self.io_queue)
+            self.ret_actual, self.eof, self.io_actual = io_trace.capture(lambda: self.func(*self.args), self.io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student function.")
 
         self.run_post()
 
     def check_ret_passed(self) -> bool:
+        if self.eof == True:
+            return False
         return (self.cmp_ret)(self.ret_expect, self.ret_actual)
 
     def check_passed(self) -> None:
@@ -221,9 +225,11 @@ class CaseFunc(CaseIOBase, Generic[T]):
     def format_output(self) -> str:
         assert self.has_run
         assert self.ret_passed is not None, "unreachable"
+        assert self.eof is not None, "unreachable"
 
         output: str = ""
-        output += fmt_ret(self.ret_expect, self.ret_actual, self.ret_passed, "Return value")
+        if not self.eof:
+            output += fmt_ret(self.ret_expect, self.ret_actual, self.ret_passed, "Return value")
         output += self.format_console_io_check()
         return output
 
@@ -244,7 +250,7 @@ class CaseScript(CaseIOBase):
 
     def run(self) -> None:
         try:
-            _, self.io_actual = io_trace.capture(lambda: load.run_script(self.script), self.io_queue)
+            _, _, self.io_actual = io_trace.capture(lambda: load.run_script(self.script), self.io_queue)
         except Exception as e:
             raise AutograderError(e, "An exception was raised while running a student script.")
 
