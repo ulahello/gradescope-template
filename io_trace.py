@@ -304,6 +304,10 @@ def deinit() -> None:
     stderr = None
 
 def capture(func: Callable[[], T], io_queue: List[str] = []) -> Tuple[T, bool, List[Read | Write]]:
+    """Capture an I/O log from calling `func`. Reads are mocked from
+    `io_queue`. Returns the tuple `(return value, EOF occurred, I/O
+    log)`, where if EOF occurred, the return value is indeterminate."""
+
     class an_eof_happened_please_dont_look_at_this_value:
         pass
 
