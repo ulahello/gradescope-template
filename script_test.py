@@ -63,11 +63,7 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
     ]:
         cases.append(mk_case(True, check_def_style, (func,), expect))
 
-    # these TODOs are for the ast checks:
-    # TODO: module path of the function should be here too, but without possible copy-paste errors
-    # TODO: fragile paths
-    # TODO: this sucks
-
+    # TODO: (boilerplate for ast checks) this sucks
     func_def_mod: ModuleType
 
     # recursion
