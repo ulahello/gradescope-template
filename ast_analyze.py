@@ -105,10 +105,7 @@ def collect_funcs(sources: Iterable[ModuleType]) -> List[Func]:
     funcs: List[Func] = []
     todo_resolve: List[Tuple[Func, Optional[str], str]] = []
     for module in sources:
-        spec = module.__spec__
-        assert spec is not None, "FIXME: handle this"
         mod_src = inspect.getsource(module)
-
         f, t = _collect_funcs_without_calls(module, ast.parse(mod_src))
         funcs.extend(f)
         todo_resolve.extend(t)
