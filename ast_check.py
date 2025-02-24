@@ -83,9 +83,9 @@ def forbid_funcalls(summary: Summary, fname: PurePath,
                     forbidden_funcs: Iterable[Tuple[Optional[ModuleType], Callable[..., Any], str]]) -> None:
     for node in body:
         if isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute)):
-            spec = unpack_attr(node.func)
+            query = unpack_attr(node.func)
             for func_mod, func, reasoning in forbidden_funcs:
-                if check_mod_func_eq(module, func, spec):
+                if check_mod_func_eq(module, func, query):
                     msg: str = f"the function `{func.__name__}`"
                     if func_mod is not None:
                         msg += f" from the module `{func_mod.__name__}`"
@@ -98,10 +98,10 @@ def forbid_vars(summary: Summary, fname: PurePath,
                 forbidden_vars: Iterable[Tuple[ModuleType, str, str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
-            spec = unpack_attr(node)
+            query = unpack_attr(node)
             for var_mod, var_name, reasoning in forbidden_vars:
                 var = getattr(var_mod, var_name)
-                if check_mod_item_eq(module, var, spec):
+                if check_mod_item_eq(module, var, query):
                     msg: str = f"the variable `{var_name}` from the module `{var_mod.__name__}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
@@ -111,11 +111,11 @@ def forbid_modules(summary: Summary, fname: PurePath,
                    forbidden_mods: Iterable[Tuple[ModuleType, str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
-            spec_mod, _ = unpack_attr(node)
-            if spec_mod is None:
+            query_mod, _ = unpack_attr(node)
+            if query_mod is None:
                 continue
             for forbidden, reasoning in forbidden_mods:
-                if check_mod_eq(module, forbidden, spec_mod):
+                if check_mod_eq(module, forbidden, query_mod):
                     msg: str = f"the module `{forbidden.__name__}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)

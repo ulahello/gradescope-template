@@ -10,7 +10,6 @@ import ast
 import inspect
 
 # NOTE: doesn't look at methods
-# TODO: consistent language around spec, query, func, mod, etc
 
 class Func:
     name: str
