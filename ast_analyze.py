@@ -1,6 +1,7 @@
 """Analyze standard ast to construct call graph."""
 
-from core import *
+from core import AutograderError
+import util
 
 from pathlib import PurePath
 from types import ModuleType
@@ -27,9 +28,7 @@ class Func:
         if isinstance(parent_def, Func):
             source_path = parent_def.source_path
         elif isinstance(parent_def, ModuleType):
-            p = inspect.getsourcefile(parent_def) # FIXME: use relative path
-            assert p is not None, "FIXME: handle this"
-            source_path = PurePath(p)
+            source_path = util.get_module_relpath(parent_def)
         else:
             assert False, "unreachable"
 

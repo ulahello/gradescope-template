@@ -1,8 +1,24 @@
+from core import WHERE_THE_SUBMISSION_IS
 from _generics import *
 from io_trace import Read, Write, LineIter
 
+from pathlib import PurePath
+from types import ModuleType
 from typing import Any, Set, Tuple, List, Optional, Sequence, Iterable, Hashable, Dict, Callable
+import inspect
 import itertools
+import os
+
+def abs_path_to_rel(root: PurePath | str, start: PurePath | str = WHERE_THE_SUBMISSION_IS) -> PurePath:
+    return PurePath(os.path.relpath(
+        root,
+        os.path.abspath(start),
+    ))
+
+def get_module_relpath(module: ModuleType, start: PurePath | str = WHERE_THE_SUBMISSION_IS) -> PurePath:
+    p = inspect.getsourcefile(module)
+    assert p is not None, "unreachable: student submission modules should have identifiable paths"
+    return abs_path_to_rel(p, start)
 
 def cmp_attributes(obj: Any, required: Set[str]) -> Tuple[Set[str], Set[str]]: # -> (extra, missing)
     attrs: Set[str]

@@ -5,6 +5,7 @@ from util import *
 import ast_check
 import io_trace
 import load
+import util
 
 from pathlib import PurePath
 from types import ModuleType
@@ -397,8 +398,7 @@ class CaseCheckAst(Case):
         if self.source_node_p is not None:
             for source_mod in self.source_node_p.sources:
                 source: str = inspect.getsource(source_mod)
-                source_path = inspect.getsourcefile(source_mod)
-                assert source_path is not None, "TODO: submissions should have identifiable source path"
+                source_path: PurePath = util.get_module_relpath(source_mod)
                 source_root: ast.AST = ast.parse(source)
                 (self.source_node_p.predicate)(
                     self.summary,
@@ -428,8 +428,7 @@ class CaseCheckAst(Case):
                 unresolved.add((self.func_node_p.spec.func_def_mod, func_name))
 
         for (func_def_mod, func_name) in unresolved:
-            func_def_path = inspect.getsourcefile(func_def_mod)
-            assert func_def_path is not None, "TODO: submissions should have identifiable source"
+            func_def_path = util.get_module_relpath(func_def_mod)
             output += f"Could not find the definition of function {func_name} in file '{func_def_path}'.\n"
 
         if len(unresolved):
