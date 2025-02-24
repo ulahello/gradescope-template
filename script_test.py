@@ -24,6 +24,7 @@ import test.recursion_ex1
 import test.recursion_ex2
 
 from pathlib import PurePath
+from types import ModuleType
 from typing import Dict, List, Any, Optional, Callable, Tuple
 import random
 
@@ -62,10 +63,8 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
     ]:
         cases.append(mk_case(True, check_def_style, (func,), expect))
 
-    # these TODOs are for the ast checks:
-    # TODO: module path of the function should be here too, but without possible copy-paste errors
-    # TODO: fragile paths
-    # TODO: this sucks
+    # TODO: (boilerplate for ast checks) this sucks
+    func_def_mod: ModuleType
 
     # recursion
     for func_name, expect in [
@@ -78,14 +77,13 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
             ("func4", True),
             ("func5", True),
     ]:
-        func = getattr(test.recursion_ex1, func_name)
-        func_def_path = "test/recursion_ex1.py"
-        source_paths = [func_def_path, "test/recursion_ex2.py"]
-        sources = test.common.read_sources(source_paths)
+        func_def_mod = test.recursion_ex1
+        sources = [func_def_mod, test.recursion_ex2]
+        func = getattr(func_def_mod, func_name)
         cases.append(
             CaseFunc(
                 True, test.common.check_rec_ast_cycles, f"{func_name} is {'' if expect else 'not '}recursive",
-                args=(sources, PurePath(func_def_path), func, func_name),
+                args=(sources, func_def_mod, func, func_name),
                 ret_expect=expect,
             )
         )
@@ -100,14 +98,13 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
             ("ok1", False),
             ("ok2", False),
     ]:
-        func = getattr(test.forbid_str_ex, func_name)
-        func_def_path = "test/forbid_str_ex.py"
-        source_paths = [func_def_path]
-        sources = test.common.read_sources(source_paths)
+        func_def_mod = test.forbid_str_ex
+        sources = [func_def_mod]
+        func = getattr(func_def_mod, func_name)
         cases.append(
             CaseFunc(
                 True, test.common.uses_str_fmt, f"{func_name} uses string formatting" if expect else f"{func_name} does not use string formatting",
-                args=(sources, PurePath(func_def_path), func, func_name),
+                args=(sources, func_def_mod, func, func_name),
                 ret_expect=expect,
             )
         )
@@ -122,19 +119,19 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
             ("bad2", True),
             ("bad3", True),
             ("bad4", True),
+            ("bad5", True),
             ("ok1", False),
             ("ok2", False),
             ("ok3", False),
             ("ok4", False),
     ]:
-        func = getattr(test.forbid_float_ex, func_name)
-        func_def_path = "test/forbid_float_ex.py"
-        source_paths = [func_def_path]
-        sources = test.common.read_sources(source_paths)
+        func_def_mod = test.forbid_float_ex
+        sources = [func_def_mod]
+        func = getattr(func_def_mod, func_name)
         cases.append(
             CaseFunc(
                 True, test.common.uses_float_op, f"{func_name} uses floating point" if expect else f"{func_name} does not use floating point",
-                args=(sources, PurePath(func_def_path), func, func_name),
+                args=(sources, func_def_mod, func, func_name),
                 ret_expect=expect,
             )
         )

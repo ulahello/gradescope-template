@@ -8,11 +8,27 @@ graph predicates respectively for CaseCheckAst.
 from ast_analyze import *
 
 from pathlib import PurePath
+from types import ModuleType
 from typing import Optional, Set, List, Tuple, Iterable, Sequence, Any, Callable, Type, TypeAlias
 import ast
 
+import cmath
+import math
+import string
+
+# TODO: passing the filename to graph and node predicates is
+# redundant, as we are given a ModuleType and can use
+# util.get_module_relpath
+
+"""Graph predicates determine whether the given function is Okay or
+Not Okay (whatever that means to the caller). The set of functions
+that have already been visited is passed to prevent redundancy."""
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
-NodePredicate: TypeAlias = Callable[["Summary", Sequence[ast.AST], PurePath], None]
+
+"""Node predicates are called on some sequence of AST nodes (typically
+either a function's or the entire source file's) defined in the given
+module. If there are issues, they are reported to the given Summary."""
+NodePredicate: TypeAlias = Callable[["Summary", PurePath, ModuleType, Sequence[ast.AST]], None]
 
 def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summary",
                         func: Func, seen: Set[Func]) -> None:
@@ -24,8 +40,9 @@ def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summa
 
     (node_predicate)(
         summary,
-        list(walk_nodes_executed(func.body)),
         func.source_path,
+        func.containing_module(),
+        list(walk_nodes_executed(func.body)),
     )
 
     for called in func.calls:
@@ -72,42 +89,50 @@ class Summary:
     def whys(self) -> List[Cause]:
         return self._whys[:self.max_to_report]
 
-def forbid_funcalls(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
-                    forbidden_funcs: Iterable[Tuple[Tuple[Optional[str], str], str]]) -> None:
+def forbid_funcalls(summary: Summary, fname: PurePath,
+                    module: ModuleType, body: Sequence[ast.AST],
+                    forbidden_funcs: Iterable[Tuple[Optional[ModuleType], Callable[..., Any], str]]) -> None:
     for node in body:
-        if isinstance(node, ast.Call):
-            for func, reasoning in forbidden_funcs:
-                (func_mod, func_name) = func
-                if check_call_eq(func, node) == True:
-                    msg: str = f"the function `{func_name}`"
+        if isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute)):
+            query = unpack_attr(node.func)
+            for func_mod, func, reasoning in forbidden_funcs:
+                if check_mod_func_eq(module, func, query):
+                    msg: str = f"the function `{func.__name__}`"
                     if func_mod is not None:
-                        msg += f" from the module `{func_mod}`"
+                        msg += f" from the module `{func_mod.__name__}`"
                     msg += f" {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_vars(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
-                forbidden_vars: Iterable[Tuple[Tuple[str, str], str]]) -> None:
+def forbid_vars(summary: Summary, fname: PurePath,
+                module: ModuleType, body: Sequence[ast.AST],
+                forbidden_vars: Iterable[Tuple[ModuleType, str, str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
-            for spec, reasoning in forbidden_vars:
-                (mod_name, var_name) = spec
-                if check_var_eq(spec, node) == True:
-                    msg: str = f"the variable `{var_name}` from the module `{mod_name}` {reasoning}"
+            query = unpack_attr(node)
+            for var_mod, var_name, reasoning in forbidden_vars:
+                var = getattr(var_mod, var_name)
+                if check_mod_item_eq(module, var, query):
+                    msg: str = f"the variable `{var_name}` from the module `{var_mod.__name__}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_modules(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
-                   forbidden_mods: Iterable[Tuple[str, str]]) -> None:
+def forbid_modules(summary: Summary, fname: PurePath,
+                   module: ModuleType, body: Sequence[ast.AST],
+                   forbidden_mods: Iterable[Tuple[ModuleType, str]]) -> None:
     for node in body:
         if isinstance(node, (ast.Name, ast.Attribute)):
-            for mod_name, reasoning in forbidden_mods:
-                if check_mod_eq(mod_name, node) == True:
-                    msg: str = f"the module `{mod_name}` {reasoning}"
+            query_mod, _ = unpack_attr(node)
+            if query_mod is None:
+                continue
+            for forbidden, reasoning in forbidden_mods:
+                if check_mod_eq(module, forbidden, query_mod):
+                    msg: str = f"the module `{forbidden.__name__}` {reasoning}"
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
+def forbid_literals_of_type(summary: Summary, fname: PurePath,
+                            module: ModuleType, body: Sequence[ast.AST],
                             forbidden_types: Iterable[Type[Any]]) -> None:
     for node in body:
         if isinstance(node, ast.JoinedStr):
@@ -121,7 +146,8 @@ def forbid_literals_of_type(summary: Summary, body: Sequence[ast.AST], fname: Pu
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
+def forbid_ops(summary: Summary, fname: PurePath,
+               module: ModuleType, body: Sequence[ast.AST],
                forbidden_ops: List[Tuple[Tuple[Type[ast.AST], str], str]]) -> None:
     for node in body:
         if isinstance(node, ast.BinOp):
@@ -131,95 +157,97 @@ def forbid_ops(summary: Summary, body: Sequence[ast.AST], fname: PurePath,
                     why = Cause(fname, node, msg)
                     summary.report(why)
 
-def nodep_forbid_str_fmt(summary: Summary, body: Sequence[ast.AST], fname: PurePath) -> None:
+def nodep_forbid_str_fmt(summary: Summary, fname: PurePath,
+                         module: ModuleType, body: Sequence[ast.AST]) -> None:
     # TODO: inherently heuristic
 
-    forbid_modules(summary, body, fname, [
-        ("string", "provides a number of string formatting functions and string variables"),
+    forbid_modules(summary, fname, module, body, [
+        (string, "provides a number of string formatting functions and string variables"),
     ])
 
-    forbid_funcalls(summary, body, fname, [
-        ((None, "str"), "returns a string"),
-        ((None, "repr"), "returns a string"),
+    forbid_funcalls(summary, fname, module, body, [
+        (None, str, "returns a string"),
+        (None, repr, "returns a string"),
     ])
 
-    forbid_literals_of_type(summary, body, fname, [
+    forbid_literals_of_type(summary, fname, module, body, [
         str,
     ])
 
-def nodep_forbid_float(summary: Summary, body: Sequence[ast.AST], fname: PurePath) -> None:
+def nodep_forbid_float(summary: Summary, fname: PurePath,
+                       module: ModuleType, body: Sequence[ast.AST]) -> None:
     # TODO: inherently heuristic
 
-    forbid_funcalls(summary, body, fname, [
-        ((None, "complex"), "returns a complex number, which in Python consists of two floats"),
-        ((None, "float"), "returns a float"),
+    forbid_funcalls(summary, fname, module, body, [
+        (None, complex, "returns a complex number, which in Python consists of two floats"),
+        (None, float, "returns a float"),
     ])
     forbid_funcalls(
-        summary, body, fname,
-        map(lambda spec: (spec, "returns a float"), [
+        summary, fname, module, body,
+        map(lambda spec: (spec[0], getattr(*spec), "returns a float"), [
             # functions in `math`
-            ("math", "fabs"),
-            ("math", "fmod"),
-            ("math", "frexp"),
-            ("math", "fsum"),
-            ("math", "ldexp"),
-            ("math", "modf"),
-            ("math", "nextafter"),
-            ("math", "remainder"),
-            ("math", "ulp"),
-            ("math", "cbrt"),
-            ("math", "exp"),
-            ("math", "exp2"),
-            ("math", "expm1"),
-            ("math", "log"),
-            ("math", "log1p"),
-            ("math", "log2"),
-            ("math", "log10"),
-            ("math", "pow"),
-            ("math", "sqrt"),
-            ("math", "acos"),
-            ("math", "asin"),
-            ("math", "atan"),
-            ("math", "atan2"),
-            ("math", "cos"),
-            ("math", "dist"),
-            ("math", "hypot"),
-            ("math", "sin"),
-            ("math", "tan"),
-            ("math", "degrees"),
-            ("math", "radians"),
-            ("math", "acosh"),
-            ("math", "asinh"),
-            ("math", "atanh"),
-            ("math", "cosh"),
-            ("math", "sinh"),
-            ("math", "tanh"),
-            ("math", "erf"),
-            ("math", "erfc"),
-            ("math", "gamma"),
-            ("math", "lgamma"),
+            (math, "fabs"),
+            (math, "fmod"),
+            (math, "frexp"),
+            (math, "fsum"),
+            (math, "ldexp"),
+            (math, "modf"),
+            (math, "nextafter"),
+            (math, "remainder"),
+            (math, "ulp"),
+            # math.cbrt, # 3.11 and beyond
+            (math, "exp"),
+            # math.exp2, # 3.11 and beyond
+            (math, "expm1"),
+            (math, "log"),
+            (math, "log1p"),
+            (math, "log2"),
+            (math, "log10"),
+            (math, "pow"),
+            (math, "sqrt"),
+            (math, "acos"),
+            (math, "asin"),
+            (math, "atan"),
+            (math, "atan2"),
+            (math, "cos"),
+            (math, "dist"),
+            (math, "hypot"),
+            (math, "sin"),
+            (math, "tan"),
+            (math, "degrees"),
+            (math, "radians"),
+            (math, "acosh"),
+            (math, "asinh"),
+            (math, "atanh"),
+            (math, "cosh"),
+            (math, "sinh"),
+            (math, "tanh"),
+            (math, "erf"),
+            (math, "erfc"),
+            (math, "gamma"),
+            (math, "lgamma"),
         ])
     )
 
-    forbid_vars(summary, body, fname,
-                map(lambda spec: (spec, "is a float"), [
-                    ("math", "pi"),
-                    ("math", "e"),
-                    ("math", "tau"),
-                    ("math", "inf"),
-                    ("math", "nan"),
+    forbid_vars(summary, fname, module, body,
+                map(lambda spec: (*spec, "is a float"), [
+                    (math, "pi"),
+                    (math, "e"),
+                    (math, "tau"),
+                    (math, "inf"),
+                    (math, "nan"),
                 ]))
 
-    forbid_modules(summary, body, fname, [
-        ("cmath", "works with complex numbers, which in Python consist of two floats"),
+    forbid_modules(summary, fname, module, body, [
+        (cmath, "works with complex numbers, which in Python consist of two floats"),
     ])
 
-    forbid_literals_of_type(summary, body, fname, [
+    forbid_literals_of_type(summary, fname, module, body, [
         float,
         complex,
     ])
 
-    forbid_ops(summary, body, fname, [
+    forbid_ops(summary, fname, module, body, [
         ((ast.Div, "/"), "yields a float"),
     ])
 
