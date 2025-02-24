@@ -16,7 +16,14 @@ import cmath
 import math
 import string
 
+"""Graph predicates determine whether the given function is Okay or
+Not Okay (whatever that means to the caller). The set of functions
+that have already been visited is passed to prevent redundancy."""
 GraphPredicate: TypeAlias = Callable[[Func, Set[Func]], bool]
+
+"""Node predicates are called on some sequence of AST nodes (typically
+either a function's or the entire source file's) defined in the given
+module. If there are issues, they are reported to the given Summary."""
 NodePredicate: TypeAlias = Callable[["Summary", PurePath, ModuleType, Sequence[ast.AST]], None]
 
 def call_node_predicate(node_predicate: Optional[NodePredicate], summary: "Summary",
