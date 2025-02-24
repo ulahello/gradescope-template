@@ -55,9 +55,8 @@ class Func:
         return self.todo_body is None
 
     def display_parent_def(self) -> str:
-        # TODO: always show source path for unambiguous
         if isinstance(self.parent_def, Func):
-            return f"function '{self.parent_def.name}'"
+            return f"function '{self.parent_def.name}' of '{self.source_path}'"
         elif isinstance(self.parent_def, ModuleType):
             return f"'{self.source_path}'"
         else:
