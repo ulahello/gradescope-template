@@ -405,6 +405,10 @@ def print_summary(summary: JsonSummary) -> None:
         print()
 
 def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should_print_summary: bool) -> int:
+    """Run the provided test cases and generate a report. Upon return,
+    the report was successfully written to `results.json`. The return
+    value specifies the exit code to use when running interactively."""
+
     metadata = load_submission_metadata()
     cases: List[Case]
     try:
@@ -413,10 +417,7 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
         # the submission can't be tested! we need to report this to the student.
         summary_bad = SummaryBad(exception=e)
         summary_bad.report(should_print_summary)
-        if should_print_summary:
-            return EXIT_FAILURE
-        else:
-            return EXIT_SUCCESS
+        return EXIT_FAILURE
 
     # set max_score dynamically based on however many points the assignment is worth
     max_score: float = float(metadata["assignment"]["total_points"])
@@ -429,10 +430,9 @@ def autograder_main(get_test_cases: Callable[[JsonMetadata], List[Case]], should
     # write/summarize the results!
     summary.report(should_print_summary)
 
-    # the exit code should always be zero if we're running on
-    # Gradescope, but for local tests it's helpful as an indicator of
-    # failed tests.
-    if not summary.all_passed() and should_print_summary:
+    # for local tests, a nonzero exit code is helpful as an indicator
+    # of failed tests.
+    if not summary.all_passed():
         return EXIT_FAILURE
-    else:
-        return EXIT_SUCCESS
+
+    return EXIT_SUCCESS

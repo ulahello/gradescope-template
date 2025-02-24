@@ -1,4 +1,4 @@
-from core import JsonMetadata, Case, autograder_main
+from core import JsonMetadata, Case, autograder_main, EXIT_SUCCESS
 from typing import List, Callable, Optional, NoReturn
 import argparse
 import io_trace
@@ -25,4 +25,7 @@ def main(get_test_cases: Callable[[JsonMetadata], List[Case]], rng_seed: int = 2
     finally:
         io_trace.deinit()
 
-    exit(exit_code)
+    if args.summary:
+        exit(exit_code)
+
+    exit(EXIT_SUCCESS)
