@@ -16,6 +16,10 @@ import cmath
 import math
 import string
 
+# TODO: passing the filename to graph and node predicates is
+# redundant, as we are given a ModuleType and can use
+# util.get_module_relpath
+
 """Graph predicates determine whether the given function is Okay or
 Not Okay (whatever that means to the caller). The set of functions
 that have already been visited is passed to prevent redundancy."""
