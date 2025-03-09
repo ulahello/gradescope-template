@@ -48,10 +48,9 @@ def run(cwd: str, args: List[str]) -> None:
 
 def copy_no_clobber(src: str, dst: str) -> None:
     dst_file = PurePath(dst, PurePath(src).name)
-    # XXX: AAAAAA time of check time of use!!! python stdlib doesn't provide an easy cross platform way to do this, so we suffer.
+    # NOTE: not using atomic fs operations
     if not os.path.exists(dst_file):
         info(f"copying '{src}' to '{dst}'")
-        # XXX: a dash more TOCTOU
         if Path(src).is_dir():
             shutil.copytree(src, dst_file)
         else:
