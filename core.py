@@ -393,6 +393,7 @@ def write_summary(summary: JsonSummary) -> None:
         f.write(json.dumps(summary))
 
 def print_summary(summary: JsonSummary) -> None:
+    # TODO: out of...?
     print(f"Assignment Score: {summary['score']}")
     print()
     print(summary["output"])
