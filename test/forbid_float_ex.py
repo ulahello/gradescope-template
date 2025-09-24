@@ -1,4 +1,5 @@
 import math
+from math import log10
 
 def div() -> float:
     return 4 / 3
@@ -26,6 +27,13 @@ def bad4() -> float:
 
 def bad5() -> float:
     return float(1)
+
+def bad6(x: int) -> int:
+    return int(log10(x))
+
+def bad7(x: int) -> int:
+    f = log10 # this is the part that's bad. referencing log10 is bad.
+    return int(f(x))
 
 def ok1() -> int:
     return 3 // 2

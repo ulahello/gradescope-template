@@ -120,6 +120,8 @@ def get_test_cases(metadata: JsonMetadata) -> List[Case]:
             ("bad3", True),
             ("bad4", True),
             ("bad5", True),
+            ("bad6", True),
+            ("bad7", True),
             ("ok1", False),
             ("ok2", False),
             ("ok3", False),
