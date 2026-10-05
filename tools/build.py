@@ -37,7 +37,7 @@ def get_zip_name(script_name: str) -> str:
     return PurePath(script_name).with_name(new_name).with_suffix(".zip").name
 
 
-def det_zip_add(zf: ZipFile, path: PurePath, file_data: str, algo: int, level: int) -> None:
+def det_zip_add(zf: ZipFile, path: PurePath, file_data: bytes, algo: int, level: int) -> None:
     info = ZipInfo(path.name, date_time=(1980, 1, 1, 0, 0, 0))
     info.compress_type = algo
     # weird api design that prior to 3.13 compresslevel and
@@ -47,8 +47,8 @@ def det_zip_add(zf: ZipFile, path: PurePath, file_data: str, algo: int, level: i
 
 def add_to_zip(zf: ZipFile, script_dir: str, sources: List[str], algo: int, level: int) -> None:
     def add_file_contents(zf: ZipFile, path: PurePath, algo: int, level: int) -> None:
-        with open(path, "r") as f:
-            file_data = f.read()
+        with open(path, "rb") as f:
+            file_data: bytes = f.read()
         det_zip_add(zf, path, file_data, algo, level)
         info(f"added source '{path.name}'")
 
